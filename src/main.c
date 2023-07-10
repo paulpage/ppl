@@ -1,7 +1,13 @@
 #include <stdio.h>
 
 #define SOKOL_IMPL
+
+#if defined(_WIN32)
 #define SOKOL_D3D11
+#elif defined(__linux) || defined(__unix__)
+#define SOKOL_GLCORE33
+#endif
+
 #include "sokol_app.h"
 #include "sokol_gfx.h"
 #include "sokol_glue.h"
