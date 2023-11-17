@@ -108,10 +108,10 @@ void ppl_handle_event(sapp_event *e) {
             sapp_request_quit();
         }
     } else if (e->type == SAPP_EVENTTYPE_MOUSE_MOVE) {
-        state.pos_x = gl_x(e->mouse_x);
-        state.pos_y = gl_y(e->mouse_y);
+        /* state.pos_x = gl_x(e->mouse_x); */
+        /* state.pos_y = gl_y(e->mouse_y); */
     } else if (e->type == SAPP_EVENTTYPE_MOUSE_SCROLL) {
-        /* state.pos_x = gl_x(e->scroll_x); */
-        /* state.pos_y -= e->scroll_y / state.window_height * 10.0; */
+        printf("scroll %f\n", e->scroll_y);
+        state.pos_y -= e->scroll_y / state.window_height * 10.0;
     }
 }
