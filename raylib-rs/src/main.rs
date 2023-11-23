@@ -1,6 +1,5 @@
 use raylib::prelude::*;
 
-
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(800, 600)
