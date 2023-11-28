@@ -12,19 +12,19 @@ fn get_text() -> Option<String> {
 }
 
 fn ctrl_down() -> bool {
-    app::is_key_down(app::KeyCode::LeftControl) || app::is_key_down(app::KeyCode::RightControl)
+    app::is_key_down(Key::LeftControl) || app::is_key_down(Key::RightControl)
 }
 
 fn alt_down() -> bool {
-    app::is_key_down(app::KeyCode::LeftAlt) || app::is_key_down(app::KeyCode::RightAlt)
+    app::is_key_down(Key::LeftAlt) || app::is_key_down(Key::RightAlt)
 }
 
 fn shift_down() -> bool {
-    app::is_key_down(app::KeyCode::LeftShift) || app::is_key_down(app::KeyCode::RightShift)
+    app::is_key_down(Key::LeftShift) || app::is_key_down(Key::RightShift)
 }
 
 fn super_down() -> bool {
-    app::is_key_down(app::KeyCode::LeftSuper) || app::is_key_down(app::KeyCode::RightSuper)
+    app::is_key_down(Key::LeftSuper) || app::is_key_down(Key::RightSuper)
 }
 
 #[macroquad::main("BasicShapes")]
@@ -33,8 +33,10 @@ async fn main() {
     let mut pos_y = 0.0;
 
     let mut lines = Vec::new();
-    lines.push(String::new());
+    lines.push(String::from("Hello"));
     let mut line_idx = 0;
+
+    let mut scroll_string = String::new();
 
     loop {
         app::clear_background(app::RED);
@@ -44,7 +46,13 @@ async fn main() {
         app::draw_circle(app::screen_width() - 30.0, app::screen_height() - 30.0, 15.0, app::YELLOW);
 
         let (_wheel_x, wheel_y) = app::mouse_wheel();
+        let wheel_y = wheel_y / 120.0;
+        // pos_y += wheel_y * 30.0;
         pos_y += wheel_y * 30.0;
+
+        if wheel_y != 0.0 {
+            scroll_string = format!("scroll: {}", wheel_y);
+        }
 
         if let Some(s) = get_text() {
             lines[line_idx].push_str(&s);
@@ -54,8 +62,9 @@ async fn main() {
             line_idx += 1;
         }
 
+        app::draw_text(&scroll_string, 20.0, 20.0, 30.0, app::DARKGRAY);
         for (i, line) in lines.iter().enumerate() {
-            app::draw_text(line.as_str(), 20.0, 20.0 + pos_y + 35.0 * i as f32, 30.0, app::DARKGRAY);
+            app::draw_text(line.as_str(), 20.0, 20.0 + pos_y + 35.0 * (i + 1) as f32, 30.0, app::DARKGRAY);
         }
 
         app::next_frame().await
