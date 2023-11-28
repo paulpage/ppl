@@ -27,7 +27,17 @@ fn super_down() -> bool {
     app::is_key_down(Key::LeftSuper) || app::is_key_down(Key::RightSuper)
 }
 
-#[macroquad::main("BasicShapes")]
+fn window_conf() -> Conf {
+    Conf {
+        platform: miniquad::conf::Platform {
+            linux_backend: miniquad::conf::LinuxBackend::WaylandOnly,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
+#[macroquad::main("hello")]
 async fn main() {
 
     let mut pos_y = 0.0;
