@@ -10,12 +10,32 @@ import "core:image/png"
 import SDL "vendor:sdl2"
 import gl "vendor:OpenGL"
 
+MouseButtonState :: struct {
+    down: bool,
+    pressed: bool,
+    clicks: i32,
+}
+
 State :: struct {
     window: ^SDL.Window,
     gl_context: SDL.GLContext,
     program_2d: u32,
     uniforms_2d: map[string]gl.Uniform_Info,
 
+    mouse: [2]f32,
+    wheel: [2]f32,
+    mouse_left: MouseButtonState,
+    mouse_right: MouseButtonState,
+    mouse_middle: MouseButtonState,
+
+    keymod: SDL.Keymod,
+    text_entered: strings.Builder,
+    keys_down: map[SDL.Keycode]bool,
+    keys_pressed: map[SDL.Keycode]bool,
+    physical_keys_down: map[SDL.Scancode]bool,
+    physical_keys_pressed: map[SDL.Scancode]bool,
+
+    window_size_changed: bool,
     window_width: f32,
     window_height: f32,
 
@@ -79,7 +99,7 @@ init :: proc(title: string) {
     state.window_height = 600
 }
 
-clear :: proc(color: [4]f32) {
+clear_background :: proc(color: [4]f32) {
     gl.ClearColor(color.r, color.g, color.b, color.a)
     gl.Clear(gl.COLOR_BUFFER_BIT)
 }
@@ -91,21 +111,80 @@ resize :: proc(x: i32, y: i32) {
 }
 
 update :: proc() -> bool {
-    event: SDL.Event
-    for SDL.PollEvent(&event) {
-        #partial switch event.type {
+
+    state.wheel = {}
+    clear(&state.keys_pressed)
+    clear(&state.physical_keys_pressed)
+    strings.builder_reset(&state.text_entered)
+    state.mouse_left.pressed = false
+    state.mouse_middle.pressed = false
+    state.mouse_right.pressed = false
+    state.window_size_changed = false
+
+    e: SDL.Event
+    for SDL.PollEvent(&e) {
+        #partial switch e.type {
             case .QUIT: return false
             case .WINDOWEVENT: {
-                #partial switch event.window.event {
+                #partial switch e.window.event {
                     case .RESIZED: {
-                        resize(event.window.data1, event.window.data2)
-                        fmt.printf("resized %v %v\n", event.window.data1, event.window.data2)
+                        state.window_size_changed = true
+                        resize(e.window.data1, e.window.data2)
                     }
+                }
+            }
+            case .MOUSEBUTTONDOWN: {
+                switch e.button.button {
+                    case SDL.BUTTON_LEFT: {
+                        state.mouse_left.down = true
+                        state.mouse_left.pressed = true
+                    }
+                    case SDL.BUTTON_MIDDLE: {
+                        state.mouse_middle.down = true
+                        state.mouse_middle.pressed = true
+                    }
+                    case SDL.BUTTON_RIGHT: {
+                        state.mouse_right.down = true
+                        state.mouse_right.pressed = true
+                    }
+                }
+            }
+            case .MOUSEBUTTONUP: {
+                switch  e.button.button {
+                    case SDL.BUTTON_LEFT: state.mouse_left.down = false
+                    case SDL.BUTTON_MIDDLE: state.mouse_middle.down = false
+                    case SDL.BUTTON_RIGHT: state.mouse_right.down = false
+                }
+            }
+            case .MOUSEMOTION: {
+                state.mouse = {f32(e.motion.x), f32(e.motion.y)}
+            }
+            case .MOUSEWHEEL: {
+                // TODO preciseX and preciseY
+                state.wheel += {f32(e.wheel.x), f32(e.wheel.y)}
+            }
+            case .KEYDOWN: {
+                state.keymod = e.key.keysym.mod
+                state.keys_down[e.key.keysym.sym] = true
+                state.physical_keys_down[e.key.keysym.scancode] = true
+                state.keys_pressed[e.key.keysym.sym] = true
+                state.physical_keys_pressed[e.key.keysym.scancode] = true
+            }
+            case .KEYUP: {
+                state.keymod = e.key.keysym.mod
+                state.keys_down[e.key.keysym.sym] = false
+                state.physical_keys_down[e.key.keysym.scancode] = false
+            }
+            case .TEXTINPUT: {
+                for c in e.text.text {
+                    if c == 0 {
+                        break
+                    }
+                    strings.write_byte(&state.text_entered, c)
                 }
             }
         }
     }
-
     return true
 }
 
@@ -252,7 +331,7 @@ flush :: proc(texture_id: u32) {
 
     // fmt.printf("verts: %v\n", state.verts)
 
-    clear_dynamic_array(&state.verts)
+    clear(&state.verts)
 }
 
 quit :: proc() {
@@ -261,4 +340,16 @@ quit :: proc() {
 	SDL.GL_DeleteContext(state.gl_context)
     SDL.DestroyWindow(state.window)
     SDL.Quit()
+}
+
+mouse_pos :: proc() -> [2]f32 {
+    return state.mouse
+}
+
+mouse_wheel :: proc() -> [2]f32 {
+    return state.wheel
+}
+
+text_entered :: proc() -> string {
+    return strings.to_string(state.text_entered)
 }

@@ -10,9 +10,21 @@ main :: proc() {
 
     texture := app.load_texture("logo-slim.png")
 
+    pos: [2]f32
+    scroll: f32
+
     for app.update() {
-        app.clear({0, 0.5, 0, 1})
-        app.draw_texture(texture, {0, 0, texture.w, texture.h}, {100, 100, texture.w, texture.h}, 0, 0, {1, 1, 1, 1})
+
+        pos = app.mouse_pos()
+        scroll += app.mouse_wheel().y
+
+        app.clear_background({0, 0.5, 0, 1})
+        app.draw_texture(texture, {0, 0, texture.w, texture.h}, {pos.x, pos.y + scroll * 40, texture.w, texture.h}, 0, 0, {1, 1, 1, 1})
+
+        text := app.text_entered()
+        if text != "" {
+            fmt.println(text)
+        }
 
         app.present()
     }
