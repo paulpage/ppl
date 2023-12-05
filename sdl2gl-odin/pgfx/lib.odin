@@ -21,6 +21,7 @@ State :: struct {
     gl_context: SDL.GLContext,
     program_2d: u32,
     uniforms_2d: map[string]gl.Uniform_Info,
+    geometry_texture: Texture,
 
     mouse: [2]f32,
     wheel: [2]f32,
@@ -59,7 +60,37 @@ Texture :: struct {
 
 gl_debug_proc :: proc "c" (source: u32, type: u32, id: u32, severity: u32, length: i32, message: cstring, userParam: rawptr) {
     context = runtime.default_context()
-    fmt.printf("OPENGL ERROR: %v\n", message)
+    switch type {
+        case gl.DEBUG_TYPE_ERROR: {
+            fmt.print("GL_DEBUG ERROR: ")
+        }
+        case gl.DEBUG_TYPE_DEPRECATED_BEHAVIOR: {
+            fmt.print("GL_DEBUG DEPRECATED: ")
+        }
+        case gl.DEBUG_TYPE_UNDEFINED_BEHAVIOR: {
+            fmt.print("GL_DEBUG UNDEFINED ")
+        }
+        case gl.DEBUG_TYPE_PORTABILITY: {
+            fmt.print("GL_DEBUG PORTABILITY: ")
+        }
+        case gl.DEBUG_TYPE_PERFORMANCE: {
+            fmt.print("GL_DEBUG PERFORMANCE: ")
+        }
+        case gl.DEBUG_TYPE_MARKER: {
+            fmt.print("GL_DEBUG MARKER: ")
+        }
+        case gl.DEBUG_TYPE_PUSH_GROUP: {
+            fmt.print("GL_DEBUG PUSH_GROUP: ")
+        }
+        case gl.DEBUG_TYPE_POP_GROUP: {
+            fmt.print("GL_DEBUG POP_GROUP: ")
+        }
+        case gl.DEBUG_TYPE_OTHER: {
+            return
+            // fmt.print("GL_DEBUG OTHER: ")
+        }
+    }
+    fmt.println(message)
 }
 
 init :: proc(title: string) {
@@ -94,6 +125,24 @@ init :: proc(title: string) {
 
 
     state.uniforms_2d = gl.get_uniforms_from_program(state.program_2d)
+
+    // Make a 1x1 texture for drawing geometry
+    state.geometry_texture.w = 1
+    state.geometry_texture.h = 1
+    gl.ActiveTexture(gl.TEXTURE0)
+    gl.GenTextures(1, &state.geometry_texture.id)
+    gl.BindTexture(gl.TEXTURE_2D, state.geometry_texture.id)
+    gl.TexImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        raw_data(&([4]u8{255, 255, 255, 255}))
+    )
 
     state.window_width = 800
     state.window_height = 600
@@ -228,8 +277,8 @@ load_texture :: proc(filename: string) -> Texture {
     tex: Texture
     img, err := png.load(filename)
     defer image.destroy(img)
-    if err != image.General_Image_Error.None {
-        fmt.printf("error: %v", err)
+    if err != nil {
+        fmt.eprintf("error: %v\n", err)
     }
     tex.w = f32(img.width)
     tex.h = f32(img.height)
@@ -259,7 +308,7 @@ load_texture :: proc(filename: string) -> Texture {
     return tex
 }
 
-draw_texture :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rotation: f32, color: [4]f32) {
+draw_texture_ex :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rotation: f32, color: [4]f32) {
     p := _get_rect_vertices(dst, origin, rotation)
 
     u0 := src.x / tex.w
@@ -268,22 +317,20 @@ draw_texture :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rotatio
     v1 := src.y / tex.h
     
     new_verts: []f32 = {
-        p[0].x, p[0].y, u0, v1,
-        p[1].x, p[1].y, u1, v1,
-        p[3].x, p[3].y, u1, v0,
-        p[0].x, p[0].y, u0, v1,
-        p[3].x, p[3].y, u1, v0,
-        p[2].x, p[2].y, u0, v0,
-        // p[0].x, p[0].y, u0, v1, color.r, color.g, color.b, color.a,
-        // p[1].x, p[1].y, u1, v1, color.r, color.g, color.b, color.a,
-        // p[3].x, p[3].y, u1, v0, color.r, color.g, color.b, color.a,
-        // p[0].x, p[0].y, u0, v1, color.r, color.g, color.b, color.a,
-        // p[3].x, p[3].y, u1, v0, color.r, color.g, color.b, color.a,
-        // p[2].x, p[2].y, u0, v0, color.r, color.g, color.b, color.a,
+        p[0].x, p[0].y, u0, v1, color.r, color.g, color.b, color.a,
+        p[1].x, p[1].y, u1, v1, color.r, color.g, color.b, color.a,
+        p[3].x, p[3].y, u1, v0, color.r, color.g, color.b, color.a,
+        p[0].x, p[0].y, u0, v1, color.r, color.g, color.b, color.a,
+        p[3].x, p[3].y, u1, v0, color.r, color.g, color.b, color.a,
+        p[2].x, p[2].y, u0, v0, color.r, color.g, color.b, color.a,
     }
 
     append(&state.verts, ..new_verts)
     flush(tex.id)
+}
+
+draw_rect_ex :: proc(rect: Rect, origin: [2]f32, rotation: f32, color: [4]f32) {
+    draw_texture_ex(state.geometry_texture, {0, 0, 1, 1}, rect, origin, rotation, color)
 }
 
 flush :: proc(texture_id: u32) {
@@ -309,12 +356,14 @@ flush :: proc(texture_id: u32) {
         gl.STATIC_DRAW
     )
     gl.BindVertexArray(vao)
-    stride := 4 * size_of(f32)
+    stride := 8 * size_of(f32)
 
     gl.EnableVertexAttribArray(0)
     gl.VertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, i32(stride), 0)
     gl.EnableVertexAttribArray(1)
     gl.VertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, i32(stride), 2 * size_of(f32))
+    gl.EnableVertexAttribArray(2)
+    gl.VertexAttribPointer(2, 4, gl.FLOAT, gl.FALSE, i32(stride), 4 * size_of(f32))
 
     uniform := gl.GetUniformLocation(state.program_2d, "tex")
     gl.UseProgram(state.program_2d)
@@ -328,8 +377,6 @@ flush :: proc(texture_id: u32) {
     gl.DeleteBuffers(1, &vbo)
     gl.DeleteVertexArrays(1, &vao)
     // gl.DeleteTextures(1, &id)
-
-    // fmt.printf("verts: %v\n", state.verts)
 
     clear(&state.verts)
 }
