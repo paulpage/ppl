@@ -3,8 +3,10 @@ package pgfx
 import "core:fmt"
 import "core:os"
 import "core:strings"
+
 import SDL "vendor:sdl2"
 import gl "vendor:OpenGL"
+import ma "vendor:miniaudio"
 import "vendor:fontstash"
 
 State :: struct {
@@ -45,6 +47,9 @@ State :: struct {
     last_vert_len: int,
     verts: [dynamic]f32,
     vbo: u32,
+
+    // Audio
+    audio_engine: ma.engine
 }
 
 // @(private)
@@ -111,6 +116,8 @@ init :: proc(title: string) {
     // TODO temp testing
     fontstash.SetSize(fs, 20)
 
+    audio_config := ma.engine_config_init()
+    ma.engine_init(&audio_config, &state.audio_engine)
 }
 
 quit :: proc() {

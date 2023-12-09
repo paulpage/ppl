@@ -4,17 +4,11 @@ import "core:fmt"
 import "core:time"
 import "core:strings"
 
-import ma "vendor:miniaudio"
-
 import app "pgfx"
 
 main :: proc() {
 
     app.init("App")
-
-    audio_engine: ma.engine
-    audio_config := ma.engine_config_init()
-    ma.engine_init(&audio_config, &audio_engine)
 
     texture := app.load_texture("../res/bird.png")
 
@@ -27,7 +21,7 @@ main :: proc() {
         start := time.tick_now()
 
         if app.key_pressed(.A) {
-            ma.engine_play_sound(&audio_engine, "../res/tweet.ogg", nil)
+            app.play_sound("../res/tweet.ogg")
         }
 
         pos = app.mouse_pos()
