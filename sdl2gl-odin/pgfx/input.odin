@@ -2,7 +2,6 @@ package pgfx
 
 import "core:strings"
 import SDL "vendor:sdl2"
-import gl "vendor:OpenGL"
 
 MouseButtonState :: struct {
     down: bool,
@@ -88,14 +87,6 @@ update :: proc() -> bool {
     return true
 }
 
-quit :: proc() {
-    delete(state.uniforms_2d)
-    gl.DeleteProgram(state.program_2d)
-	SDL.GL_DeleteContext(state.gl_context)
-    SDL.DestroyWindow(state.window)
-    SDL.Quit()
-}
-
 mouse_pos :: proc() -> [2]f32 {
     return state.mouse
 }
@@ -106,4 +97,20 @@ mouse_wheel :: proc() -> [2]f32 {
 
 text_entered :: proc() -> string {
     return strings.to_string(state.text_entered)
+}
+
+key_pressed :: proc(key: SDL.Keycode) -> bool {
+    return key in state.keys_pressed
+}
+
+key_down :: proc(key: SDL.Keycode) -> bool {
+    return key in state.keys_down
+}
+
+physical_key_pressed :: proc(key: SDL.Scancode) -> bool {
+    return key in state.physical_keys_pressed
+}
+
+physical_key_down :: proc(key: SDL.Scancode) -> bool {
+    return key in state.physical_keys_down
 }

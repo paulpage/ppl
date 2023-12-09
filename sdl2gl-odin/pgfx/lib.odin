@@ -40,7 +40,11 @@ State :: struct {
     uniforms_text: map[string]gl.Uniform_Info,
     geometry_texture: Texture,
     font_texture: Texture,
+    last_texture: Texture,
+    last_is_text: bool,
+    last_vert_len: int,
     verts: [dynamic]f32,
+    vbo: u32,
 }
 
 // @(private)
@@ -88,6 +92,7 @@ init :: proc(title: string) {
     }
 
     state.uniforms_2d = gl.get_uniforms_from_program(state.program_2d)
+    gl.GenBuffers(1, &state.vbo)
 
     // Make a 1x1 texture for drawing geometry
     state.geometry_texture = load_texture_mem(1, 1, []u8{255, 255, 255, 255})
@@ -107,3 +112,13 @@ init :: proc(title: string) {
     fontstash.SetSize(fs, 20)
 
 }
+
+quit :: proc() {
+    delete(state.uniforms_2d)
+    gl.DeleteBuffers(1, &state.vbo)
+    gl.DeleteProgram(state.program_2d)
+	SDL.GL_DeleteContext(state.gl_context)
+    SDL.DestroyWindow(state.window)
+    SDL.Quit()
+}
+

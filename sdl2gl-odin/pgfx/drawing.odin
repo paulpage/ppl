@@ -120,6 +120,7 @@ resize :: proc(x: i32, y: i32) {
 }
 
 present :: proc() {
+    flush(state.last_texture, state.last_is_text, true)
     SDL.GL_SwapWindow(state.window)
 }
 
@@ -199,6 +200,8 @@ load_texture_mem :: proc(w: i32, h: i32, data: []u8) -> Texture {
 }
 
 draw_texture_ex :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rotation: f32, color: [4]f32, is_text: bool) {
+    flush(tex, is_text, false)
+
     p := _get_rect_vertices(dst, origin, rotation)
 
     u0 := src.x / tex.w
@@ -216,17 +219,24 @@ draw_texture_ex :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rota
     }
 
     append(&state.verts, ..new_verts)
-    flush(tex.id, is_text)
 }
 
 draw_rect_ex :: proc(rect: Rect, origin: [2]f32, rotation: f32, color: [4]f32) {
     draw_texture_ex(state.geometry_texture, {0, 0, 1, 1}, rect, origin, rotation, color, false)
 }
 
-flush :: proc(texture_id: u32, is_text: bool) {
-    vao, vbo: u32
+flush :: proc(texture: Texture, is_text: bool, force: bool) {
+
+    if force {
+        state.last_texture = texture
+        state.last_is_text = is_text
+    } else if texture.id == state.last_texture.id && is_text == state.last_is_text {
+        return
+    }
+
+   vao: u32
     gl.ActiveTexture(gl.TEXTURE0)
-    gl.BindTexture(gl.TEXTURE_2D, texture_id)
+    gl.BindTexture(gl.TEXTURE_2D, state.last_texture.id)
     gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     gl.Disable(gl.DEPTH_TEST)
 
@@ -237,14 +247,23 @@ flush :: proc(texture_id: u32, is_text: bool) {
     gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
     gl.GenVertexArrays(1, &vao)
-    gl.GenBuffers(1, &vbo)
-    gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-    gl.BufferData(
-        gl.ARRAY_BUFFER,
-        len(state.verts) * size_of(f32),
-        raw_data(state.verts),
-        gl.STATIC_DRAW
-    )
+    gl.BindBuffer(gl.ARRAY_BUFFER, state.vbo)
+    if state.last_vert_len == len(state.verts) {
+        gl.BufferSubData(
+            gl.ARRAY_BUFFER,
+            0,
+            len(state.verts) * size_of(f32),
+            raw_data(state.verts)
+        )
+    } else {
+        gl.BufferData(
+            gl.ARRAY_BUFFER,
+            len(state.verts) * size_of(f32),
+            raw_data(state.verts),
+            gl.DYNAMIC_DRAW
+        )
+        state.last_vert_len = len(state.verts)
+    }
     gl.BindVertexArray(vao)
     stride := 8 * size_of(f32)
 
@@ -259,16 +278,17 @@ flush :: proc(texture_id: u32, is_text: bool) {
     is_text_uniform := gl.GetUniformLocation(state.program_2d, "is_text")
     gl.UseProgram(state.program_2d)
     gl.Uniform1i(uniform, 0)
-    gl.Uniform1i(is_text_uniform, i32(is_text))
+    gl.Uniform1i(is_text_uniform, i32(state.last_is_text))
 
     gl.DrawArrays(gl.TRIANGLES, 0, i32(len(state.verts)) / 4)
 
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
     gl.BindVertexArray(0)
 
-    gl.DeleteBuffers(1, &vbo)
     gl.DeleteVertexArrays(1, &vao)
     // gl.DeleteTextures(1, &id)
 
     clear(&state.verts)
+    state.last_texture = texture
+    state.last_is_text = is_text
 }
