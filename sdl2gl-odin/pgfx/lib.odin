@@ -83,9 +83,9 @@ init :: proc(title: string) {
 	gl.load_up_to(GL_VERSION_MAJOR, GL_VERSION_MINOR, SDL.gl_set_proc_address)
 
 
-    gl.Enable(gl.DEBUG_OUTPUT)
+    // gl.Enable(gl.DEBUG_OUTPUT)
+    // gl.DebugMessageCallback(gl_debug_proc, nil)
     gl.Enable(gl.BLEND)
-    gl.DebugMessageCallback(gl_debug_proc, nil)
 
     // TODO make sure these get loaded from anywhere, maybe #load
     state.program_2d, ok = gl.load_shaders("pgfx/shaders/2d_vert.glsl", "pgfx/shaders/2d_frag.glsl")
