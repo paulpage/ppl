@@ -1,6 +1,7 @@
 package pgfx
 
 import "core:strings"
+import "core:fmt"
 import SDL "vendor:sdl2"
 
 MouseButtonState :: struct {
@@ -59,8 +60,7 @@ update :: proc() -> bool {
                 state.mouse = {f32(e.motion.x), f32(e.motion.y)}
             }
             case .MOUSEWHEEL: {
-                // TODO preciseX and preciseY
-                state.wheel += {f32(e.wheel.x), f32(e.wheel.y)}
+                state.wheel += {e.wheel.preciseX, e.wheel.preciseY}
             }
             case .KEYDOWN: {
                 state.keymod = e.key.keysym.mod

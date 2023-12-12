@@ -199,6 +199,10 @@ load_texture_mem :: proc(w: i32, h: i32, data: []u8) -> Texture {
     return tex
 }
 
+draw_texture :: proc(tex: Texture, src: Rect, dst: Rect) {
+    draw_texture_ex(tex, src, dst, {0, 0}, 0, {1, 1, 1, 1}, false)
+}
+
 draw_texture_ex :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rotation: f32, color: [4]f32, is_text: bool) {
     flush(tex, is_text, false)
 
@@ -219,6 +223,10 @@ draw_texture_ex :: proc(tex: Texture, src: Rect, dst: Rect, origin: [2]f32, rota
     }
 
     append(&state.verts, ..new_verts)
+}
+
+draw_rect :: proc(rect: Rect, color: [4]f32) {
+    draw_rect_ex(rect, {0, 0}, 0, color);
 }
 
 draw_rect_ex :: proc(rect: Rect, origin: [2]f32, rotation: f32, color: [4]f32) {
