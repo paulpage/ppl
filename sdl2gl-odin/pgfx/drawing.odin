@@ -9,8 +9,8 @@ import SDL "vendor:sdl2"
 import gl "vendor:OpenGL"
 import "vendor:fontstash"
 
-GL_VERSION_MAJOR :: 4
-GL_VERSION_MINOR :: 3
+GL_VERSION_MAJOR :: 3
+GL_VERSION_MINOR :: 1
 
 gl_debug_proc :: proc "c" (source: u32, type: u32, id: u32, severity: u32, length: i32, message: cstring, userParam: rawptr) {
     context = runtime.default_context()
