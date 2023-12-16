@@ -10,6 +10,12 @@ MouseButtonState :: struct {
     clicks: i32,
 }
 
+MouseButton :: enum {
+    Left,
+    Right,
+    Middle,
+}
+
 update :: proc() -> bool {
 
     state.wheel = {}
@@ -93,6 +99,24 @@ mouse_pos :: proc() -> [2]f32 {
 
 mouse_wheel :: proc() -> [2]f32 {
     return state.wheel
+}
+
+mouse_down :: proc(button: MouseButton) -> bool {
+    switch button {
+        case .Left: { return state.mouse_left.down }
+        case .Right: { return state.mouse_right.down }
+        case .Middle: { return state.mouse_middle.down }
+    }
+    return false
+}
+
+mouse_pressed :: proc(button: MouseButton) -> bool {
+    switch button {
+        case .Left: { return state.mouse_left.pressed }
+        case .Right: { return state.mouse_right.pressed }
+        case .Middle: { return state.mouse_middle.pressed }
+    }
+    return false
 }
 
 text_entered :: proc() -> string {

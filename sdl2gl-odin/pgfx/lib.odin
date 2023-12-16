@@ -129,3 +129,6 @@ quit :: proc() {
     SDL.Quit()
 }
 
+window_size :: proc() -> [2]f32 {
+    return {state.window_width, state.window_height} 
+}

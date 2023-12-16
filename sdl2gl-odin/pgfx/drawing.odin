@@ -51,6 +51,8 @@ draw_text :: proc(text: string, x: f32, y: f32, size: f32, color: [4]f32) {
     fs := &state.font_context
     fontstash.BeginState(fs)
     fontstash.SetSize(fs, size)
+    _, descender, height := fontstash.VerticalMetrics(fs)
+    y := y + height + descender
     iter := fontstash.TextIterInit(fs, x, y, text)
     q: fontstash.Quad
     for fontstash.TextIterNext(fs, &iter, &q) {
@@ -299,4 +301,16 @@ flush :: proc(texture: Texture, is_text: bool, force: bool) {
     clear(&state.verts)
     state.last_texture = texture
     state.last_is_text = is_text
+}
+
+get_text_rect :: proc(text: string, x: f32, y: f32, size: f32) -> Rect {
+    fs := &state.font_context
+    fontstash.BeginState(fs)
+    fontstash.SetSize(fs, size)
+    points: [4]f32
+    _, descender, height := fontstash.VerticalMetrics(fs)
+    fontstash.TextBounds(&state.font_context, text, x, y, &points)
+    fontstash.EndState(fs)
+    // return {points[0], points[1], points[2] - points[0], points[3] - points[1]}
+    return {points[0], points[1], points[2] - points[0], height + descender}
 }
