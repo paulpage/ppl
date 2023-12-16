@@ -41,6 +41,8 @@ main :: proc() {
         ui.pop_layout()
 
         ui.spacer("viewport_spacer")
+        ui.button("test")
+        ui.spacer("viewport_spacer2")
 
         ui.push_layout("Status bar", .ToolRow)
         if ui.button("Open2").clicked {
