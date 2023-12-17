@@ -26,11 +26,33 @@ tool_names := map[Tool]string{
 }
 
 State :: struct {
-    drawing: bool,
-    tool: Tool,
+    image: Image,
     layer: ^Layer,
+    texture: app.Texture,
+
+    canvas_pos: [2]f32,
+    canvas_scale: f32,
+    canvas_offset: [2]f32,
+    canvas_offset_baseline: [2]f32,
+
+    tool: Tool,
     color: Color,
+
+    drawing: bool,
+
+    window_size: [2]f32,
     old_mouse_pos: [2]f32,
+}
+
+mouse_to_canvas :: proc(mouse_pos: [2]f32, canvas_pos: [2]f32, canvas_scale: f32) -> Point {
+    return Point{
+        i32((mouse_pos.x - canvas_pos.x) / canvas_scale),
+        i32((mouse_pos.y - canvas_pos.y) / canvas_scale),
+    }
+}
+
+update_canvas_pos :: proc(state: ^State) {
+    state.canvas_pos += state.canvas_offset
 }
 
 main :: proc() {
@@ -44,24 +66,28 @@ main :: proc() {
     pos: [2]f32
     scroll: f32
 
-    state: State
-    state.color = {255, 128, 128, 255}
-
-    data := #load("pgfx/drawing.odin")
-
     ui.init()
 
-    // image, ok := make_image_from_path("res/bird.png")
-    image := make_image(800, 600)
-    for i in 0..<image.rect.w * image.rect.h {
-        image.layers[0].data[i] = Color{255, 255, 255, 255}
+    state := State{
+        image = make_image(800, 600),
+        canvas_pos = {100, 100},
+        canvas_scale = 2,
+        canvas_offset = {0, 0},
+        canvas_offset_baseline = {0, 0},
+        tool = .Pencil,
+        color = {255, 255, 0, 255},
+        drawing = false,
+        window_size = app.window_size(),
+        old_mouse_pos = app.mouse_pos(),
     }
-    texture := app.load_texture_mem(image.rect.w, image.rect.h, raw_data(image_get_raw_data(&image)[:]))
-    image.layers[0].dirty_rect = image.layers[0].rect
 
-    state.layer = &image.layers[0]
-
-    // fmt.printf("data: %v\n", image_get_raw_data(&image))
+    state.layer = &state.image.layers[0]
+    for i in 0..<state.image.rect.w * state.image.rect.h {
+        state.image.layers[0].data[i] = Color{255, 255, 255, 255}
+    }
+    state.texture = app.load_texture_mem(state.image.rect.w, state.image.rect.h, raw_data(image_get_raw_data(&state.image)[:]))
+    state.image.layers[0].dirty_rect = state.image.layers[0].rect
+    state.layer = &state.image.layers[0]
 
     for app.update() {
 
@@ -90,15 +116,34 @@ main :: proc() {
         }
 
         if app.key_pressed(.W) {
-            image_save(&image, "test.png")
+            image_save(&state.image, "test.png")
         }
+
+        if app.mouse_pressed(.Middle) {
+            mouse_pos := app.mouse_pos()
+            state.canvas_offset_baseline = mouse_pos
+        }
+        if app.mouse_down(.Middle) {
+            mouse_pos := app.mouse_pos()
+            state.canvas_offset = mouse_pos - state.canvas_offset_baseline
+            update_canvas_pos(&state)
+            state.canvas_offset = {0, 0}
+            state.canvas_offset_baseline = mouse_pos
+        }
+
+        scroll := app.mouse_wheel()
+        if scroll.y != 0 {
+            state.canvas_scale *= (10 + scroll.y) / 10
+            update_canvas_pos(&state)
+        }
+
 
         // Update Image
         if (app.mouse_down(.Left) && !mouse_intercepted)|| state.drawing {
 
             mouse_pos := app.mouse_pos()
-            pos1 := Point{i32(state.old_mouse_pos.x), i32(state.old_mouse_pos.y)}
-            pos2 := Point{i32(mouse_pos.x), i32(mouse_pos.y)}
+            pos1 := mouse_to_canvas({state.old_mouse_pos.x, state.old_mouse_pos.y}, state.canvas_pos, state.canvas_scale)
+            pos2 := mouse_to_canvas({mouse_pos.x, mouse_pos.y}, state.canvas_pos, state.canvas_scale)
 
             switch state.tool {
                 case .Pencil: {
@@ -141,12 +186,12 @@ main :: proc() {
         app.clear_background({0, 0.5, 0, 1})
 
         // TODO texture_update_part
-        image.layers[0].dirty_rect = image.layers[0].rect
-        app.texture_update(&texture, 0, 0, image.rect.w, image.rect.h, raw_data(image_get_raw_data(&image)[:]))
+        state.image.layers[0].dirty_rect = state.image.layers[0].rect
+        app.texture_update(&state.texture, 0, 0, state.image.rect.w, state.image.rect.h, raw_data(image_get_raw_data(&state.image)[:]))
 
-        app.draw_texture(texture,
-            {0, 0, texture.w, texture.h},
-            {0, 0, texture.w, texture.h})
+        app.draw_texture(state.texture,
+            {0, 0, state.texture.w, state.texture.h},
+            {state.canvas_pos.x, state.canvas_pos.y, state.texture.w * state.canvas_scale, state.texture.h * state.canvas_scale})
 
         // if app.key_pressed(.Q) || app.key_pressed(.RETURN) {
         //     break
