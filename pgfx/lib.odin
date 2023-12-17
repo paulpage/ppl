@@ -100,7 +100,7 @@ init :: proc(title: string) {
     gl.GenBuffers(1, &state.vbo)
 
     // Make a 1x1 texture for drawing geometry
-    state.geometry_texture = load_texture_mem(1, 1, []u8{255, 255, 255, 255})
+    state.geometry_texture = load_texture_mem(1, 1, raw_data([]u8{255, 255, 255, 255}))
 
     state.window_width = 800
     state.window_height = 600
@@ -110,7 +110,7 @@ init :: proc(title: string) {
     fs := &state.font_context
     fontstash.Init(fs, 512, 512, .TOPLEFT)
     // TODO let user select font
-    font := fontstash.AddFont(&state.font_context, "sans", "../res/DroidSans.ttf")
+    font := fontstash.AddFont(&state.font_context, "sans", "res/DroidSans.ttf")
     fontstash.SetFont(&state.font_context, font)
 
     // TODO temp testing

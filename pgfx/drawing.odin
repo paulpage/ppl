@@ -175,10 +175,11 @@ load_texture :: proc(filename: string) -> Texture {
         return tex
     }
 
-    return load_texture_mem(i32(img.width), i32(img.height), img.pixels.buf[:])
+    return load_texture_mem(i32(img.width), i32(img.height), raw_data(img.pixels.buf[:]))
 }
 
-load_texture_mem :: proc(w: i32, h: i32, data: []u8) -> Texture {
+// load_texture_mem :: proc(w: i32, h: i32, data: []u8) -> Texture {
+load_texture_mem :: proc(w: i32, h: i32, data: rawptr) -> Texture {
     tex: Texture
     tex.w = f32(w)
     tex.h = f32(h)
@@ -195,10 +196,24 @@ load_texture_mem :: proc(w: i32, h: i32, data: []u8) -> Texture {
         0,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
-        raw_data(data)
+        data
     )
 
     return tex
+}
+
+// texture_update :: proc(tex: ^Texture, x, y, w, h: i32, data: []u8) {
+texture_update :: proc(tex: ^Texture, x, y, w, h: i32, data: rawptr) {
+    gl.ActiveTexture(gl.TEXTURE0)
+    gl.BindTexture(gl.TEXTURE_2D, tex.id)
+    gl.TexSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        x, y, w, h,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        data
+    )
 }
 
 draw_texture :: proc(tex: Texture, src: Rect, dst: Rect) {
