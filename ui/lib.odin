@@ -269,7 +269,8 @@ _calc_input :: proc(window: ^Window, id: uint, level: uint, mouse_intercepted: b
     }
 }
 
-check_widget :: proc(window: ^Window, widget: Widget) -> (uint, Interaction) {
+check_widget_id :: proc(widget: Widget) -> (Interaction, uint) {
+    window := &state.windows[state.current_id]
     widget := widget
     widget.style = state.styles[len(state.styles) - 1]
     interaction: Interaction
@@ -311,7 +312,13 @@ check_widget :: proc(window: ^Window, widget: Widget) -> (uint, Interaction) {
         append(&window.widgets, widget)
     }
 
-    return id, interaction
+    // state.windows[state.current_id].current_id = id;
+    return interaction, id
+}
+
+check_widget :: proc(widget: Widget) -> Interaction {
+    interaction, _ := check_widget_id(widget)
+    return interaction
 }
 
 // ============================================================
@@ -385,7 +392,7 @@ push_layout :: proc(name: string, layout: Layout) -> Interaction {
     widget.size = size
     widget.layout = layout
     widget.flags = flags
-    new_id, interaction := check_widget(&state.windows[w], widget)
+    interaction, new_id := check_widget_id(widget)
     state.windows[w].current_id = new_id;
     return interaction;
 }
