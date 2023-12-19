@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:time"
 import "core:strings"
+import "core:strconv"
 import "core:math"
 import "core:math/rand"
 
@@ -55,6 +56,34 @@ update_canvas_pos :: proc(state: ^State) {
     state.canvas_pos += state.canvas_offset
 }
 
+ui_set_color :: proc(state: ^State) {
+    ui.push_window("Color Pane", {200, 200, 100, 300})
+    ui.push_layout("color layout", .Vertical)
+    colors := []Color{
+        {255, 0, 0, 255},
+        {0, 255, 0, 255},
+        {0, 0, 255, 255},
+        {0, 0, 0, 255},
+        {255, 255, 255, 255},
+    }
+    for i in 0..<len(colors) {
+        c := [4]f32{
+            f32(colors[i].r) / 255,
+            f32(colors[i].g) / 255,
+            f32(colors[i].b) / 255,
+            f32(colors[i].a) / 255,
+        }
+        if ui.rect_button(fmt.tprint("color##%v", i), 50, 50, c).clicked {
+            state.color = colors[i]
+        }
+        // ui.push_color(c)
+        // ui.button(fmt.tprint("color##%v", i))
+        // ui.button(strings.concatenate({"color##", strconv.itoa(i)}))
+        // ui.pop_color()
+    }
+    ui.pop_layout()
+}
+
 main :: proc() {
     randstate: rand.Rand
     rand.init(&randstate, u64(time.tick_now()._nsec))
@@ -94,26 +123,6 @@ main :: proc() {
         mouse_intercepted := false
 
         // Set active tool
-        if app.key_pressed(.P) {
-            state.tool = .Pencil
-            fmt.println(tool_names[state.tool])
-        }
-        if app.key_pressed(.B) {
-            state.tool = .Paintbrush
-            fmt.println(tool_names[state.tool])
-        }
-        if app.key_pressed(.C) {
-            state.tool = .ColorPicker
-            fmt.println(tool_names[state.tool])
-        }
-        if app.key_pressed(.F) {
-            state.tool = .Fill
-            fmt.println(tool_names[state.tool])
-        }
-        if app.key_pressed(.S) {
-            state.tool = .SprayCan
-            fmt.println(tool_names[state.tool])
-        }
 
         if app.key_pressed(.W) {
             image_save(&state.image, "test.png")
@@ -193,56 +202,64 @@ main :: proc() {
             {0, 0, state.texture.w, state.texture.h},
             {state.canvas_pos.x, state.canvas_pos.y, state.texture.w * state.canvas_scale, state.texture.h * state.canvas_scale})
 
+
         // if app.key_pressed(.Q) || app.key_pressed(.RETURN) {
         //     break
         // }
 
-        // ui.push_layout("Main Window", .Vertical)
-        // ui.push_layout("Toolbar", .ToolRow)
-        // if ui.button("Open").clicked {
-        //     fmt.println("Open")
-        // }
-        // if ui.button("Save").clicked {
-        //     fmt.println("Save")
-        // }
-        // ui.spacer("toolbar_spacer")
-        // if ui.button("Close").clicked {
-        //     fmt.println("Close")
-        // }
-        // ui.pop_layout()
+        ui.push_layout("Main Window", .Vertical)
 
-        // ui.spacer("viewport_spacer")
-        // ui.button("test")
-        // ui.spacer("viewport_spacer2")
+        {
+            ui.push_layout("Toolbar", .ToolRow)
+            if ui.button("Open").clicked {
+                fmt.println("Open")
+            }
+            if ui.button("Save").clicked {
+                image_save(&state.image, "test.png")
+                fmt.printf("Saved to %v\n", "test.png")
+            }
+            ui.spacer("toolbar_spacer")
+            ui.pop_layout()
+        }
 
-        // ui.push_layout("Status bar", .ToolRow)
-        // if ui.button("Open2").clicked {
-        //     fmt.println("Open2")
-        // }
-        // if ui.button("Save2").clicked {
-        //     fmt.println("Save2")
-        // }
-        // ui.spacer("toolbar_spacer")
-        // if ui.button("Close2").clicked {
-        //     fmt.println("Close2")
-        // }
-        // ui.pop_layout()
+        ui.spacer("viewport_spacer")
 
-        // ui.pop_layout()
+        // Status bar
+        {
+            ui.push_layout("Status bar", .ToolRow)
+            ui.spacer("toolbar_spacer")
+            ui.label(strings.concatenate({tool_names[state.tool], "##active_tool_label"}))
+            ui.pop_layout()
+        }
 
-        // ui.pop_layout()
-        // ui.pop_layout()
+        ui.pop_layout()
 
-        // ui.push_window("Tool Pane", {50, 50, 100, 300})
-        // ui.push_layout("Tool columns", .ToolColumn)
-        // ui.button("tool1")
-        // ui.button("tool2")
-        // ui.button("tool3")
-        // ui.button("tool4")
+        ui.push_window("Tool Pane", {50, 50, 100, 300})
+        {
+            ui.push_color({0.5, 0.5, 1, 1})
+            ui.push_layout("Tool columns", .ToolColumn)
+            if ui.button("Pencil").clicked || app.key_pressed(.P) {
+                state.tool = .Pencil
+            }
+            ui.pop_color()
+            if ui.button("Paintbrush").clicked || app.key_pressed(.B) {
+                state.tool = .Paintbrush
+            }
+            if ui.button("Color Picker").clicked || app.key_pressed(.C) {
+                state.tool = .ColorPicker
+            }
+            if ui.button("Fill").clicked || app.key_pressed(.F) {
+                state.tool = .Fill
+            }
+            if ui.button("Spray Can").clicked || app.key_pressed(.S) {
+                state.tool = .SprayCan
+            }
+            ui.pop_layout()
+        }
 
-        // ui.update()
+        ui_set_color(&state)
 
-
+        ui.update()
 
 
         // if !has_updated || app::is_key_pressed(Key::Space) {

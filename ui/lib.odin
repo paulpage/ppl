@@ -2,6 +2,7 @@ package ui
 
 import "core:math/rand"
 import "core:fmt"
+import "core:strings"
 
 import app "../pgfx"
 
@@ -22,7 +23,9 @@ Size :: struct {
 }
 
 WidgetFlag :: enum {
+    DrawRect,
     DrawText,
+    Hoverable,
     Clickable,
     DrawBorder,
     Movable,
@@ -55,6 +58,7 @@ Widget :: struct {
     flags: WidgetFlags,
     layout: Layout,
     requested_pos: [2]f32,
+    style: StyleInfo,
 
     // State
     dragging: bool,
@@ -84,8 +88,6 @@ StyleInfo :: struct {
     color_background: [4]f32,
     color_border: [4]f32,
     color_text: [4]f32,
-    temp_colors: [dynamic][4]f32,
-    temp_color_idx: uint,
 }
 
 Ui :: struct {
@@ -94,14 +96,19 @@ Ui :: struct {
     current_id: uint,
 
     // Style
-    style: StyleInfo,
+    styles: [dynamic]StyleInfo,
 
     // State
     next_floating_window_pos: [2]f32,
     mouse_intercepted: bool,
 }
 
-calc_parent_dependent :: proc(window: ^Window, id: uint, level: uint) {
+_key :: proc(name: string) -> string {
+    s := strings.split(name, "##")
+    return s[len(s) - 1]
+}
+
+_calc_parent_dependent :: proc(window: ^Window, id: uint, level: uint) {
     for i in 0..<2 {
         #partial switch window.widgets[id].size[i].kind {
             case .PercentOfParent: {
@@ -114,14 +121,14 @@ calc_parent_dependent :: proc(window: ^Window, id: uint, level: uint) {
 
     for i in 0..<len(window.widgets[id].children) {
         child_id := window.widgets[id].children[i]
-        calc_parent_dependent(window, child_id, level + 1)
+        _calc_parent_dependent(window, child_id, level + 1)
     }
 }
 
-calc_child_dependent :: proc(window: ^Window, id: uint, level: uint) {
+_calc_child_dependent :: proc(window: ^Window, id: uint, level: uint) {
     for i in 0..<len(window.widgets[id].children) {
         child_id := window.widgets[id].children[i]
-        calc_child_dependent(window, child_id, level + 1)
+        _calc_child_dependent(window, child_id, level + 1)
 
         for j in 0..<2 {
             #partial switch window.widgets[id].size[j].kind {
@@ -138,10 +145,10 @@ calc_child_dependent :: proc(window: ^Window, id: uint, level: uint) {
     }
 }
 
-calc_violations :: proc(window: ^Window, id: uint, level: uint) {
+_calc_violations :: proc(window: ^Window, id: uint, level: uint) {
     for i in 0..<len(window.widgets[id].children) {
         child_id := window.widgets[id].children[i]
-        calc_violations(window, child_id, level + 1)
+        _calc_violations(window, child_id, level + 1)
     }
 
     for j in 0..<2 {
@@ -175,11 +182,11 @@ calc_violations :: proc(window: ^Window, id: uint, level: uint) {
     }
 }
 
-calc_positions :: proc(window: ^Window, id: uint, level: uint, pos: [2]f32) {
+_calc_positions :: proc(window: ^Window, id: uint, level: uint, pos: [2]f32) {
     child_pos := pos
     for i in 0..<len(window.widgets[id].children) {
         child_id := window.widgets[id].children[i]
-        calc_positions(window, child_id, level + 1, child_pos)
+        _calc_positions(window, child_id, level + 1, child_pos)
         switch window.widgets[id].layout {
             case .Floating: {
                 child_pos = window.widgets[child_id].requested_pos
@@ -208,21 +215,20 @@ calc_positions :: proc(window: ^Window, id: uint, level: uint, pos: [2]f32) {
     }
 }
 
-draw_node :: proc(window: ^Window, id: uint, level: uint, style: ^StyleInfo) {
+_draw_node :: proc(window: ^Window, id: uint, level: uint) {
     // fmt.printf("%v draw %v: %v\n", level, window.widgets[id].name, window.widgets[id].rect);
 
-    style.color_background = style.temp_colors[style.temp_color_idx]
-    style.temp_color_idx = (style.temp_color_idx + 1) % 100
+    style := window.widgets[id].style
 
     color: [4]f32
-    if window.widgets[id].hovered {
+    flags := window.widgets[id].flags
+    if window.widgets[id].hovered && .Hoverable in flags {
         color = {0.5, 0.5, 0.5, 1}
     } else {
         color = style.color_background
     }
 
-    flags := window.widgets[id].flags
-    if .DrawBorder in flags {
+    if .DrawRect in flags && .DrawBorder in flags {
         app.draw_rect(window.widgets[id].rect, style.color_border)
         inside_rect: Rect = {
             window.widgets[id].rect.x + style.border_size,
@@ -231,27 +237,28 @@ draw_node :: proc(window: ^Window, id: uint, level: uint, style: ^StyleInfo) {
             window.widgets[id].rect.h - style.border_size * 2,
         }
         app.draw_rect(inside_rect, color)
-    } else {
+    } else if .DrawRect in flags {
         app.draw_rect(window.widgets[id].rect, color)
     }
 
     if .DrawText in flags {
-        app.draw_text(window.widgets[id].name, window.widgets[id].rect.x + style.padding, window.widgets[id].rect.y + style.padding, style.font_size, style.color_text)
+        name := strings.split(window.widgets[id].name, "##")[0]
+        app.draw_text(name, window.widgets[id].rect.x + style.padding, window.widgets[id].rect.y + style.padding, style.font_size, style.color_text)
     }
 
     for i in 0..<len(window.widgets[id].children) {
         child_id := window.widgets[id].children[i]
-        draw_node(window, child_id, level + 1, style)
+        _draw_node(window, child_id, level + 1)
     }
 }
 
-calc_input :: proc(window: ^Window, id: uint, level: uint, mouse_intercepted: bool) {
+_calc_input :: proc(window: ^Window, id: uint, level: uint, mouse_intercepted: bool) {
 
     window.widgets[id].hovered = false
 
     for i in 0..<len(window.widgets[id].children) {
         child_id := window.widgets[id].children[i]
-        calc_input(window, child_id, level + 1, mouse_intercepted)
+        _calc_input(window, child_id, level + 1, mouse_intercepted)
     }
 
     mouse_pos := app.mouse_pos()
@@ -264,18 +271,20 @@ calc_input :: proc(window: ^Window, id: uint, level: uint, mouse_intercepted: bo
 
 check_widget :: proc(window: ^Window, widget: Widget) -> (uint, Interaction) {
     widget := widget
+    widget.style = state.styles[len(state.styles) - 1]
     interaction: Interaction
 
     has_id := false
     id: uint
     for widget_id in window.widgets[window.current_id].children {
-        if window.widgets[widget_id].name == widget.name {
+        if _key(window.widgets[widget_id].name) == _key(widget.name) {
             has_id = true
             id = widget_id
         }
     }
 
     if has_id {
+        window.widgets[id].name = widget.name
         mouse_pos := app.mouse_pos()
 
         if app.rect_contains(window.widgets[id].rect, mouse_pos) {
@@ -292,6 +301,8 @@ check_widget :: proc(window: ^Window, widget: Widget) -> (uint, Interaction) {
         if !app.mouse_down(.Left) {
             window.widgets[id].dragging = false
         }
+
+        // window.widgets[id] = widget
     } else {
         widget.id = len(window.widgets)
         widget.parent = window.current_id
@@ -313,24 +324,6 @@ init :: proc() {
     randstate: rand.Rand
     rand.init(&randstate, 1000)
 
-    style: StyleInfo
-    style.font_size = 20
-    style.border_size = 2
-    style.padding = 5
-    style.color_background = {0.5, 0.5, 0.5, 1}
-    style.color_border = {0, 0.5, 0, 1}
-    style.color_text = {1, 1, 1, 1}
-    style.temp_colors = make([dynamic][4]f32)
-
-    for _ in 0..<100 {
-        append(&style.temp_colors, [4]f32{
-            rand.float32(&randstate),
-            rand.float32(&randstate),
-            rand.float32(&randstate),
-            1,
-        })
-    }
-
     window: Window
     window.name = "FIRST_ROOT_WINDOW"
 
@@ -343,7 +336,14 @@ init :: proc() {
     widget.layout = .Floating
 
     state.next_floating_window_pos = {20, 40}
-    state.style = style
+    append(&state.styles, StyleInfo{
+        font_size = 20,
+        border_size = 2,
+        padding = 5,
+        color_background = {0.5, 0.5, 0.5, 1},
+        color_border = {0, 0.5, 0, 1},
+        color_text = {1, 1, 1, 1},
+    })
     append(&state.windows, window)
     append(&state.windows[0].widgets, widget)
 }
@@ -377,6 +377,9 @@ push_layout :: proc(name: string, layout: Layout) -> Interaction {
     if layout == .Floating {
         flags += {.Movable}
     }
+    if layout == .ToolRow {
+        flags += {.DrawRect}
+    }
     widget: Widget
     widget.name = name
     widget.size = size
@@ -390,40 +393,6 @@ push_layout :: proc(name: string, layout: Layout) -> Interaction {
 pop_layout :: proc() {
     w := state.current_id
     state.windows[w].current_id = state.windows[w].widgets[state.windows[w].current_id].parent
-}
-
-button :: proc(name: string) -> Interaction {
-    w := state.current_id
-    id := uint(len(state.windows[w].widgets))
-
-    widget: Widget
-    widget.id = id
-    widget.name = name
-    widget.size = {
-        {.TextContent, 0, 1},
-        {.TextContent, 0, 1},
-    }
-    widget.flags = {.Clickable, .DrawBorder, .DrawText}
-
-    _, interaction := check_widget(&state.windows[w], widget)
-    return interaction
-}
-
-spacer :: proc(name: string) -> Interaction {
-    w := state.current_id
-    id := uint(len(state.windows[w].widgets))
-
-    widget: Widget
-    widget.id = id
-    widget.name = name
-    widget.size = {
-        {.PercentOfParent, 100, 0},
-        {.PercentOfParent, 100, 0},
-    }
-    widget.flags = {}
-
-    _, interaction := check_widget(&state.windows[w], widget)
-    return interaction
 }
 
 check_window :: proc(window: Window) {
@@ -459,7 +428,6 @@ push_window :: proc(name: string, rect: Rect) {
 update :: proc() {
     state.current_id = 0
     state.mouse_intercepted = false
-    state.style.temp_color_idx = 0
 
     window_size := app.window_size()
     state.windows[0].rect = {0, 0, window_size.x, window_size.y}
@@ -480,11 +448,13 @@ update :: proc() {
                         state.windows[w].widgets[i].computed_size[j] = state.windows[w].widgets[i].size[j].value
                     }
                     case .TextContent: {
-                        text_rect := app.get_text_rect(state.windows[w].widgets[i].name, 0, 0, state.style.font_size)
+                        style := state.windows[w].widgets[i].style
+                        name := strings.split(state.windows[w].widgets[i].name, "##")[0]
+                        text_rect := app.get_text_rect(name, 0, 0, style.font_size)
                         // fmt.printf("the text rect is %v\n", text_rect)
                         text_size: [2]f32 = {
-                            text_rect.w + (state.style.padding + state.style.border_size) * 2,
-                            text_rect.h + (state.style.padding + state.style.border_size) * 2,
+                            text_rect.w + (style.padding + style.border_size) * 2,
+                            text_rect.h + (style.padding + style.border_size) * 2,
                         }
                         state.windows[w].widgets[i].computed_size[j] = text_size[j]
                     }
@@ -492,14 +462,14 @@ update :: proc() {
             }
         }
 
-        calc_parent_dependent(&state.windows[w], 0, 0)
-        calc_child_dependent(&state.windows[w], 0, 0)
-        calc_violations(&state.windows[w], 0, 0)
-        calc_positions(&state.windows[w], 0, 0, {0, 0})
+        _calc_parent_dependent(&state.windows[w], 0, 0)
+        _calc_child_dependent(&state.windows[w], 0, 0)
+        _calc_violations(&state.windows[w], 0, 0)
+        _calc_positions(&state.windows[w], 0, 0, {0, 0})
     }
 
     for w := len(state.windows) - 1; w >= 0; w -= 1 {
-        calc_input(&state.windows[w], 0, 0, state.mouse_intercepted)
+        _calc_input(&state.windows[w], 0, 0, state.mouse_intercepted)
         if state.windows[w].mouse_intercepted {
             state.mouse_intercepted = true
         }
@@ -507,8 +477,7 @@ update :: proc() {
 
     for w in 0..<len(state.windows) {
         for i in 0..<len(state.windows[w].widgets) {
-            state.style.temp_color_idx = 0
-            draw_node(&state.windows[w], 0, 0, &state.style)
+            _draw_node(&state.windows[w], 0, 0)
         }
     }
 }
