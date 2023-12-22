@@ -11,8 +11,13 @@ button :: proc(name: string) -> Interaction {
     })
 }
 
-rect_button :: proc(name: string, width: f32, height: f32, color: [4]f32) -> Interaction {
-    push_color(color)
+rect_button :: proc(name: string, width: f32, height: f32, color: [4]f32 = {0, 0, 0, 0}, border_color: [4]f32 = {0, 0, 0, 0}) -> Interaction {
+    if color != {0, 0, 0, 0} {
+        push_color(color)
+    }
+    if border_color != {0, 0, 0, 0} {
+        push_border_color(border_color)
+    }
     interaction := check_widget(Widget{
         name = name,
         size = {
@@ -21,7 +26,12 @@ rect_button :: proc(name: string, width: f32, height: f32, color: [4]f32) -> Int
         },
         flags = {.Clickable, .DrawBorder, .DrawRect, .Hoverable}
     })
-    pop_color()
+    if color != {0, 0, 0, 0} {
+        pop_style()
+    }
+    if border_color != {0, 0, 0, 0} {
+        pop_style()
+    }
     return interaction
 }
 
@@ -43,6 +53,6 @@ spacer :: proc(name: string) -> Interaction {
             {.PercentOfParent, 100, 0},
             {.PercentOfParent, 100, 0},
         },
-        flags = {},
+        flags = {.Transparent},
     })
 }

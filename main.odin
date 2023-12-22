@@ -73,7 +73,11 @@ ui_set_color :: proc(state: ^State) {
             f32(colors[i].b) / 255,
             f32(colors[i].a) / 255,
         }
-        if ui.rect_button(fmt.tprint("color##%v", i), 50, 50, c).clicked {
+        border_color := [4]f32{0, 0, 0, 0}
+        if state.color == colors[i] {
+            border_color = {1, 1, 0, 1}
+        }
+        if ui.rect_button(fmt.tprint("color##%v", i), 50, 50, c, border_color).clicked {
             state.color = colors[i]
         }
         // ui.push_color(c)
@@ -83,6 +87,30 @@ ui_set_color :: proc(state: ^State) {
     }
     ui.pop_layout()
 }
+
+ui_set_tool :: proc(state: ^State) {
+    ui.push_window("Tool Pane", {50, 50, 100, 300})
+    ui.push_layout("Tool columns", .ToolColumn)
+
+    for tool, name in tool_names {
+        is_selected := false
+        if tool == state.tool {
+            ui.push_color({0.5, 0.5, 1, 1})
+            is_selected = true
+        }
+
+        if ui.button(name).clicked {
+            state.tool = tool
+        }
+
+        if is_selected {
+            ui.pop_style()
+        }
+    }
+
+    ui.pop_layout()
+}
+
 
 main :: proc() {
     randstate: rand.Rand
@@ -120,8 +148,6 @@ main :: proc() {
 
     for app.update() {
 
-        mouse_intercepted := false
-
         // Set active tool
 
         if app.key_pressed(.W) {
@@ -148,7 +174,14 @@ main :: proc() {
 
 
         // Update Image
-        if (app.mouse_down(.Left) && !mouse_intercepted)|| state.drawing {
+        if app.mouse_pressed(.Left) && !ui.mouse_intercepted() {
+            state.drawing = true
+        }
+        if !app.mouse_down(.Left) {
+            state.drawing = false
+        }
+
+        if state.drawing {
 
             mouse_pos := app.mouse_pos()
             pos1 := mouse_to_canvas({state.old_mouse_pos.x, state.old_mouse_pos.y}, state.canvas_pos, state.canvas_scale)
@@ -234,29 +267,7 @@ main :: proc() {
 
         ui.pop_layout()
 
-        ui.push_window("Tool Pane", {50, 50, 100, 300})
-        {
-            ui.push_color({0.5, 0.5, 1, 1})
-            ui.push_layout("Tool columns", .ToolColumn)
-            if ui.button("Pencil").clicked || app.key_pressed(.P) {
-                state.tool = .Pencil
-            }
-            ui.pop_color()
-            if ui.button("Paintbrush").clicked || app.key_pressed(.B) {
-                state.tool = .Paintbrush
-            }
-            if ui.button("Color Picker").clicked || app.key_pressed(.C) {
-                state.tool = .ColorPicker
-            }
-            if ui.button("Fill").clicked || app.key_pressed(.F) {
-                state.tool = .Fill
-            }
-            if ui.button("Spray Can").clicked || app.key_pressed(.S) {
-                state.tool = .SprayCan
-            }
-            ui.pop_layout()
-        }
-
+        ui_set_tool(&state)
         ui_set_color(&state)
 
         ui.update()

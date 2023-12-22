@@ -29,6 +29,7 @@ WidgetFlag :: enum {
     Clickable,
     DrawBorder,
     Movable,
+    Transparent,
 }
 
 WidgetFlags :: bit_set[WidgetFlag]
@@ -85,9 +86,10 @@ StyleInfo :: struct {
     font_size: f32,
     border_size: f32,
     padding: f32,
-    color_background: [4]f32,
-    color_border: [4]f32,
+    color: [4]f32,
+    border_color: [4]f32,
     color_text: [4]f32,
+    color_hovered: [4]f32,
 }
 
 Ui :: struct {
@@ -223,13 +225,13 @@ _draw_node :: proc(window: ^Window, id: uint, level: uint) {
     color: [4]f32
     flags := window.widgets[id].flags
     if window.widgets[id].hovered && .Hoverable in flags {
-        color = {0.5, 0.5, 0.5, 1}
+        color = style.color_hovered
     } else {
-        color = style.color_background
+        color = style.color
     }
 
     if .DrawRect in flags && .DrawBorder in flags {
-        app.draw_rect(window.widgets[id].rect, style.color_border)
+        app.draw_rect(window.widgets[id].rect, style.border_color)
         inside_rect: Rect = {
             window.widgets[id].rect.x + style.border_size,
             window.widgets[id].rect.y + style.border_size,
@@ -263,8 +265,10 @@ _calc_input :: proc(window: ^Window, id: uint, level: uint, mouse_intercepted: b
 
     mouse_pos := app.mouse_pos()
 
-    if !(window.mouse_intercepted || mouse_intercepted) && app.rect_contains(window.widgets[id].rect, mouse_pos) {
-        window.widgets[id].hovered = true
+    if !(window.mouse_intercepted || mouse_intercepted) && app.rect_contains(window.widgets[id].rect, mouse_pos) && .Transparent not_in window.widgets[id].flags {
+        if !app.mouse_down(.Left) {
+            window.widgets[id].hovered = true
+        }
         window.mouse_intercepted = true
     }
 }
@@ -286,6 +290,7 @@ check_widget_id :: proc(widget: Widget) -> (Interaction, uint) {
 
     if has_id {
         window.widgets[id].name = widget.name
+        window.widgets[id].style = widget.style
         mouse_pos := app.mouse_pos()
 
         if app.rect_contains(window.widgets[id].rect, mouse_pos) {
@@ -334,22 +339,25 @@ init :: proc() {
     window: Window
     window.name = "FIRST_ROOT_WINDOW"
 
-    widget: Widget
-    widget.name = "FIRST_ROOT_WIDGET"
-    widget.size = [2]Size{
-        {.PercentOfParent, 100, 0},
-        {.PercentOfParent, 100, 0},
+    widget := Widget{
+        name = "FIRST_ROOT_WIDGET",
+        size = [2]Size{
+            {.PercentOfParent, 100, 0},
+            {.PercentOfParent, 100, 0},
+        },
+        layout = .Floating,
+        flags = {.Transparent}
     }
-    widget.layout = .Floating
 
     state.next_floating_window_pos = {20, 40}
     append(&state.styles, StyleInfo{
         font_size = 20,
         border_size = 2,
         padding = 5,
-        color_background = {0.5, 0.5, 0.5, 1},
-        color_border = {0, 0.5, 0, 1},
+        color = {0.6, 0.6, 0.6, 1},
+        border_color = {0, 0.5, 0, 1},
         color_text = {1, 1, 1, 1},
+        color_hovered = {0.7, 0.7, 0.7, 1},
     })
     append(&state.windows, window)
     append(&state.windows[0].widgets, widget)
@@ -381,17 +389,17 @@ push_layout :: proc(name: string, layout: Layout) -> Interaction {
         }
     }
     flags: WidgetFlags
-    if layout == .Floating {
-        flags += {.Movable}
+    #partial switch layout {
+        case .Floating: flags += {.Movable}
+        case .ToolRow: flags += {.DrawRect}
+        case .Vertical: flags += {.Transparent}
     }
-    if layout == .ToolRow {
-        flags += {.DrawRect}
+    widget := Widget{
+        name = name,
+        size = size,
+        layout = layout,
+        flags = flags,
     }
-    widget: Widget
-    widget.name = name
-    widget.size = size
-    widget.layout = layout
-    widget.flags = flags
     interaction, new_id := check_widget_id(widget)
     state.windows[w].current_id = new_id;
     return interaction;
@@ -487,4 +495,8 @@ update :: proc() {
             _draw_node(&state.windows[w], 0, 0)
         }
     }
+}
+
+mouse_intercepted :: proc() -> bool {
+    return state.mouse_intercepted
 }
