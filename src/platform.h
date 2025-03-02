@@ -27,8 +27,8 @@ typedef struct Font {
     float scale;
 } Font;
 
+typedef struct Sound Sound;
 
-typedef struct Font Font;
 
 void app_init();
 bool app_should_quit();
@@ -40,5 +40,9 @@ void draw_rect(Rect rect, Color color);
 void draw_texture(Texture *texture, Rect src, Rect dst);
 void draw_text(Font *font, const char *text, float x, float y);
 
+Sound load_sound(char *filename);
+void play_sound(Sound *sound);
+void play_music(Sound *sound);
+void stop_music();
 
 #endif // PLATFORM_H

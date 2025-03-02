@@ -1,14 +1,21 @@
 #include "platform.h"
 #include "platform_sdl3.c"
+#include "sound_sdl3.c"
 
 int main(int argc, char **argv) {
 
     app_init();
 
+    Sound sound = load_sound("res/tweet.ogg");
+    Sound music = load_sound("res/song.ogg");
+
     Font font = load_font("res/fonts/vera/Vera.ttf");
     Texture texture = load_texture("res/bird.png");
 
+    play_sound(&sound);
+
     while (!app_should_quit()) {
+        play_music(&music);
 
         app_clear((Color){0.0f, 0.0f, 1.0f, 1.0f});
 

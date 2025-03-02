@@ -103,6 +103,8 @@ struct {
     SDL_GPUCommandBuffer *cmdbuf;
     SDL_GPUTexture *swapchain_texture;
     SDL_GPURenderPass *render_pass;
+
+    SDL_AudioStream *stream;
 } _APP = {0};
 
 
@@ -269,6 +271,10 @@ static SDL_GPUShader *sdl_load_shader(
 }
 
 void app_init() {
+
+    ASSERT_CALL(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
+
+    printf("Path: %s\n", SDL_GetBasePath());
 
     char *title = "Application";
     int width = 800;
