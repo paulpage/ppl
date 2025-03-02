@@ -14,13 +14,13 @@ extern "C" {
 #include <stdint.h>
 #include <string.h>
 
-size_t file_length(FILE *f);
-unsigned char *read_file(const char *filename, size_t *plen);
-char **read_file_lines(const char *filename, size_t *file_size, size_t *line_count);
+size_t os_file_length(FILE *f);
+unsigned char *os_read_file(const char *filename, size_t *plen);
+char **os_read_file_lines(const char *filename, size_t *file_size, size_t *line_count);
 
 #ifdef PJP_IMPLEMENTATION
 
-size_t file_length(FILE *f) {
+size_t os_file_length(FILE *f) {
 	long len, pos;
 	pos = ftell(f);
 	fseek(f, 0, SEEK_END);
@@ -29,9 +29,9 @@ size_t file_length(FILE *f) {
 	return (size_t) len;
 }
 
-unsigned char *read_file(const char *filename, size_t *plen) {
+unsigned char *os_read_file(const char *filename, size_t *plen) {
     FILE *f = fopen(filename, "rb");
-    size_t len = file_length(f);
+    size_t len = os_file_length(f);
     unsigned char *buffer = (unsigned char*)malloc(len);
     len = fread(buffer, 1, len, f);
     if (plen) *plen = len;
@@ -39,13 +39,13 @@ unsigned char *read_file(const char *filename, size_t *plen) {
     return buffer;
 }
 
-char **read_file_lines(const char *filename, size_t *file_size, size_t *line_count) {
+char **os_read_file_lines(const char *filename, size_t *file_size, size_t *line_count) {
     FILE *f = fopen(filename, "rb");
     char *buffer, **list=NULL, *s;
     size_t len, count, i;
 
     if (!f) return NULL;
-    len = file_length(f);
+    len = os_file_length(f);
     buffer = (char *) malloc(len+1);
     len = fread(buffer, 1, len, f);
     buffer[len] = 0;
