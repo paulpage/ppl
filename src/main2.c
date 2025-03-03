@@ -19,10 +19,12 @@ int main(int argc, char **argv) {
 
         app_clear((Color){0.0f, 0.0f, 1.0f, 1.0f});
 
-        draw_rect(
-            (Rect){20.0f, 20.0f, 40.0f, 50.0f},
-            (Color){1.0f, 1.0f, 0.0f, 1.0f}
-        );
+        if (is_mouse_down(BUTTON_LEFT)) {
+            draw_rect(
+                (Rect){20.0f, 20.0f, 40.0f, 50.0f},
+                (Color){1.0f, 1.0f, 0.0f, 1.0f}
+            );
+        }
 
         draw_texture(&texture, (Rect){0.0f, 0.0f, (f32)texture.w, (f32)texture.h}, (Rect){0.0f, 0.0f, (f32)texture.w, (f32)texture.h});
 
@@ -33,8 +35,15 @@ int main(int argc, char **argv) {
 
         draw_text(&font, "Hello", 0, 0);
 
+        if (is_key_pressed(KEY_A)) {
+            printf("a");
+        }
+
+        if (is_key_pressed(KEY_Q)) {
+            app_quit();
+        }
+
     }
 
-    app_quit();
     return 0;
 }

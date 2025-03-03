@@ -86,6 +86,7 @@ void free_vert_store(VertStore *store) {
     store->capacity = 0;
 }
 
+#define TEXT_BUF_LEN 32
 struct {
     AppConfig config;
     bool should_quit;
@@ -105,6 +106,20 @@ struct {
     SDL_GPURenderPass *render_pass;
 
     SDL_AudioStream *stream;
+
+    struct {
+        Vec2 mouse;
+        Vec2 wheel;
+        bool buttons_down[BUTTON_COUNT];
+        bool buttons_pressed[BUTTON_COUNT];
+        bool buttons_released[BUTTON_COUNT];
+        bool keys_down[KEY_COUNT];
+        bool keys_pressed[KEY_COUNT];
+        bool keys_released[KEY_COUNT];
+        Key keymap[SDL_SCANCODE_COUNT];
+        char textbuf[TEXT_BUF_LEN];
+        int textbuf_pos;
+    } input;
 } _APP = {0};
 
 
@@ -270,9 +285,134 @@ static SDL_GPUShader *sdl_load_shader(
     return shader;
 }
 
+void sdl_init_keymap() {
+    _APP.input.keymap[SDL_SCANCODE_SPACE] = KEY_SPACE;
+    _APP.input.keymap[SDL_SCANCODE_APOSTROPHE] = KEY_APOSTROPHE;
+    _APP.input.keymap[SDL_SCANCODE_COMMA] = KEY_COMMA;
+    _APP.input.keymap[SDL_SCANCODE_MINUS] = KEY_MINUS;
+    _APP.input.keymap[SDL_SCANCODE_PERIOD] = KEY_PERIOD;
+    _APP.input.keymap[SDL_SCANCODE_SLASH] = KEY_SLASH;
+    _APP.input.keymap[SDL_SCANCODE_0] = KEY_0;
+    _APP.input.keymap[SDL_SCANCODE_1] = KEY_1;
+    _APP.input.keymap[SDL_SCANCODE_2] = KEY_2;
+    _APP.input.keymap[SDL_SCANCODE_3] = KEY_3;
+    _APP.input.keymap[SDL_SCANCODE_4] = KEY_4;
+    _APP.input.keymap[SDL_SCANCODE_5] = KEY_5;
+    _APP.input.keymap[SDL_SCANCODE_6] = KEY_6;
+    _APP.input.keymap[SDL_SCANCODE_7] = KEY_7;
+    _APP.input.keymap[SDL_SCANCODE_8] = KEY_8;
+    _APP.input.keymap[SDL_SCANCODE_9] = KEY_9;
+    _APP.input.keymap[SDL_SCANCODE_SEMICOLON] = KEY_SEMICOLON;
+    _APP.input.keymap[SDL_SCANCODE_EQUALS] = KEY_EQUAL;
+    _APP.input.keymap[SDL_SCANCODE_A] = KEY_A;
+    _APP.input.keymap[SDL_SCANCODE_B] = KEY_B;
+    _APP.input.keymap[SDL_SCANCODE_C] = KEY_C;
+    _APP.input.keymap[SDL_SCANCODE_D] = KEY_D;
+    _APP.input.keymap[SDL_SCANCODE_E] = KEY_E;
+    _APP.input.keymap[SDL_SCANCODE_F] = KEY_F;
+    _APP.input.keymap[SDL_SCANCODE_G] = KEY_G;
+    _APP.input.keymap[SDL_SCANCODE_H] = KEY_H;
+    _APP.input.keymap[SDL_SCANCODE_I] = KEY_I;
+    _APP.input.keymap[SDL_SCANCODE_J] = KEY_J;
+    _APP.input.keymap[SDL_SCANCODE_K] = KEY_K;
+    _APP.input.keymap[SDL_SCANCODE_L] = KEY_L;
+    _APP.input.keymap[SDL_SCANCODE_M] = KEY_M;
+    _APP.input.keymap[SDL_SCANCODE_N] = KEY_N;
+    _APP.input.keymap[SDL_SCANCODE_O] = KEY_O;
+    _APP.input.keymap[SDL_SCANCODE_P] = KEY_P;
+    _APP.input.keymap[SDL_SCANCODE_Q] = KEY_Q;
+    _APP.input.keymap[SDL_SCANCODE_R] = KEY_R;
+    _APP.input.keymap[SDL_SCANCODE_S] = KEY_S;
+    _APP.input.keymap[SDL_SCANCODE_T] = KEY_T;
+    _APP.input.keymap[SDL_SCANCODE_U] = KEY_U;
+    _APP.input.keymap[SDL_SCANCODE_V] = KEY_V;
+    _APP.input.keymap[SDL_SCANCODE_W] = KEY_W;
+    _APP.input.keymap[SDL_SCANCODE_X] = KEY_X;
+    _APP.input.keymap[SDL_SCANCODE_Y] = KEY_Y;
+    _APP.input.keymap[SDL_SCANCODE_Z] = KEY_Z;
+    _APP.input.keymap[SDL_SCANCODE_LEFTBRACKET] = KEY_LEFT_BRACKET;
+    _APP.input.keymap[SDL_SCANCODE_BACKSLASH] = KEY_BACKSLASH;
+    _APP.input.keymap[SDL_SCANCODE_RIGHTBRACKET] = KEY_RIGHT_BRACKET;
+    _APP.input.keymap[SDL_SCANCODE_GRAVE] = KEY_GRAVE_ACCENT;
+    /* _APP.input.keymap[] = SDL_SCANCODE_UNKNOWNTODOKEY_WORLD_1;  // */ 
+    /* APP.input.keymap[KEY_WORLD_2] = SDL_SCANCODE_UNKNOWN; // TODO_ */
+    _APP.input.keymap[SDL_SCANCODE_ESCAPE] = KEY_ESCAPE;
+    _APP.input.keymap[SDL_SCANCODE_RETURN] = KEY_ENTER;
+    _APP.input.keymap[SDL_SCANCODE_TAB] = KEY_TAB;
+    _APP.input.keymap[SDL_SCANCODE_BACKSPACE] = KEY_BACKSPACE;
+    _APP.input.keymap[SDL_SCANCODE_INSERT] = KEY_INSERT;
+    _APP.input.keymap[SDL_SCANCODE_DELETE] = KEY_DELETE;
+    _APP.input.keymap[SDL_SCANCODE_RIGHT] = KEY_RIGHT;
+    _APP.input.keymap[SDL_SCANCODE_LEFT] = KEY_LEFT;
+    _APP.input.keymap[SDL_SCANCODE_DOWN] = KEY_DOWN;
+    _APP.input.keymap[SDL_SCANCODE_UP] = KEY_UP;
+    _APP.input.keymap[SDL_SCANCODE_PAGEUP] = KEY_PAGE_UP;
+    _APP.input.keymap[SDL_SCANCODE_PAGEDOWN] = KEY_PAGE_DOWN;
+    _APP.input.keymap[SDL_SCANCODE_HOME] = KEY_HOME;
+    _APP.input.keymap[SDL_SCANCODE_END] = KEY_END;
+    _APP.input.keymap[SDL_SCANCODE_CAPSLOCK] = KEY_CAPS_LOCK;
+    _APP.input.keymap[SDL_SCANCODE_SCROLLLOCK] = KEY_SCROLL_LOCK;
+    _APP.input.keymap[SDL_SCANCODE_NUMLOCKCLEAR] = KEY_NUM_LOCK;
+    _APP.input.keymap[SDL_SCANCODE_PRINTSCREEN] = KEY_PRINT_SCREEN;
+    _APP.input.keymap[SDL_SCANCODE_PAUSE] = KEY_PAUSE;
+    _APP.input.keymap[SDL_SCANCODE_F1] = KEY_F1;
+    _APP.input.keymap[SDL_SCANCODE_F2] = KEY_F2;
+    _APP.input.keymap[SDL_SCANCODE_F3] = KEY_F3;
+    _APP.input.keymap[SDL_SCANCODE_F4] = KEY_F4;
+    _APP.input.keymap[SDL_SCANCODE_F5] = KEY_F5;
+    _APP.input.keymap[SDL_SCANCODE_F6] = KEY_F6;
+    _APP.input.keymap[SDL_SCANCODE_F7] = KEY_F7;
+    _APP.input.keymap[SDL_SCANCODE_F8] = KEY_F8;
+    _APP.input.keymap[SDL_SCANCODE_F9] = KEY_F9;
+    _APP.input.keymap[SDL_SCANCODE_F10] = KEY_F10;
+    _APP.input.keymap[SDL_SCANCODE_F11] = KEY_F11;
+    _APP.input.keymap[SDL_SCANCODE_F12] = KEY_F12;
+    _APP.input.keymap[SDL_SCANCODE_F13] = KEY_F13;
+    _APP.input.keymap[SDL_SCANCODE_F14] = KEY_F14;
+    _APP.input.keymap[SDL_SCANCODE_F15] = KEY_F15;
+    _APP.input.keymap[SDL_SCANCODE_F16] = KEY_F16;
+    _APP.input.keymap[SDL_SCANCODE_F17] = KEY_F17;
+    _APP.input.keymap[SDL_SCANCODE_F18] = KEY_F18;
+    _APP.input.keymap[SDL_SCANCODE_F19] = KEY_F19;
+    _APP.input.keymap[SDL_SCANCODE_F20] = KEY_F20;
+    _APP.input.keymap[SDL_SCANCODE_F21] = KEY_F21;
+    _APP.input.keymap[SDL_SCANCODE_F22] = KEY_F22;
+    _APP.input.keymap[SDL_SCANCODE_F23] = KEY_F23;
+    _APP.input.keymap[SDL_SCANCODE_F24] = KEY_F24;
+    /* _APP.input.keymap[] = SDL_SCANCODE_UNKNOWNTODOKEY_F25; // */ 
+    _APP.input.keymap[SDL_SCANCODE_KP_0] = KEY_KP_0;
+    _APP.input.keymap[SDL_SCANCODE_KP_1] = KEY_KP_1;
+    _APP.input.keymap[SDL_SCANCODE_KP_2] = KEY_KP_2;
+    _APP.input.keymap[SDL_SCANCODE_KP_3] = KEY_KP_3;
+    _APP.input.keymap[SDL_SCANCODE_KP_4] = KEY_KP_4;
+    _APP.input.keymap[SDL_SCANCODE_KP_5] = KEY_KP_5;
+    _APP.input.keymap[SDL_SCANCODE_KP_6] = KEY_KP_6;
+    _APP.input.keymap[SDL_SCANCODE_KP_7] = KEY_KP_7;
+    _APP.input.keymap[SDL_SCANCODE_KP_8] = KEY_KP_8;
+    _APP.input.keymap[SDL_SCANCODE_KP_9] = KEY_KP_9;
+    _APP.input.keymap[SDL_SCANCODE_KP_DECIMAL] = KEY_KP_DECIMAL;
+    _APP.input.keymap[SDL_SCANCODE_KP_DIVIDE] = KEY_KP_DIVIDE;
+    _APP.input.keymap[SDL_SCANCODE_KP_MULTIPLY] = KEY_KP_MULTIPLY;
+    _APP.input.keymap[SDL_SCANCODE_KP_MINUS] = KEY_KP_SUBTRACT;
+    /* _APP.input.keymap[] = SDL_SCANCODE_UNKNOWN; /KEY_KP_ADD/ TODO */  
+    _APP.input.keymap[SDL_SCANCODE_KP_ENTER] = KEY_KP_ENTER;
+    _APP.input.keymap[SDL_SCANCODE_KP_EQUALS] = KEY_KP_EQUAL;
+    _APP.input.keymap[SDL_SCANCODE_LSHIFT] = KEY_LEFT_SHIFT;
+    _APP.input.keymap[SDL_SCANCODE_LCTRL] = KEY_LEFT_CONTROL;
+    _APP.input.keymap[SDL_SCANCODE_LALT] = KEY_LEFT_ALT;
+    _APP.input.keymap[SDL_SCANCODE_LGUI] = KEY_LEFT_SUPER;
+    _APP.input.keymap[SDL_SCANCODE_RSHIFT] = KEY_RIGHT_SHIFT;
+    _APP.input.keymap[SDL_SCANCODE_RCTRL] = KEY_RIGHT_CONTROL;
+    _APP.input.keymap[SDL_SCANCODE_RALT] = KEY_RIGHT_ALT;
+    _APP.input.keymap[SDL_SCANCODE_RGUI] = KEY_RIGHT_SUPER;
+    _APP.input.keymap[SDL_SCANCODE_MENU] = KEY_MENU;
+}
+
 void app_init() {
 
     ASSERT_CALL(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO));
+
+    sdl_init_keymap();
 
     printf("Path: %s\n", SDL_GetBasePath());
 
@@ -369,6 +509,7 @@ void app_init() {
 }
 
 void app_quit() {
+    _APP.should_quit = true;
 }
 
 void sdl_begin_frame() {
@@ -472,18 +613,100 @@ void sdl_flush() {
     _APP.vertex_data_store.size = 0;
 }
 
+void sdl_process_events() {
+    SDL_Event e;
+
+    _APP.input.textbuf_pos = 0;
+    for (int i = 0; i < KEY_COUNT; i++) {
+        _APP.input.keys_pressed[i] = false;
+        _APP.input.keys_released[i] = false;
+    }
+    for (int i = 0; i < TEXT_BUF_LEN; i++) {
+        _APP.input.textbuf[i] = '\0';
+    }
+    for (int i = 0; i < BUTTON_COUNT; i++) {
+        _APP.input.buttons_pressed[i] = false;
+        _APP.input.buttons_released[i] = false;
+    }
+
+    while (SDL_PollEvent(&e)) {
+        switch (e.type) {
+            case SDL_EVENT_QUIT:
+                {
+                    _APP.should_quit = true;
+                }
+                break;
+
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                {
+
+                    Button button = BUTTON_INVALID;
+                    switch (e.button.button) {
+                        case SDL_BUTTON_LEFT: button = BUTTON_LEFT; break;
+                        case SDL_BUTTON_RIGHT: button = BUTTON_RIGHT; break;
+                        case SDL_BUTTON_MIDDLE: button = BUTTON_MIDDLE; break;
+                    }
+                    _APP.input.buttons_down[button] = true;
+                    _APP.input.buttons_pressed[button] = true;
+                }
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                {
+                    Button button = BUTTON_INVALID;
+                    switch (e.button.button) {
+                        case SDL_BUTTON_LEFT: button = BUTTON_LEFT; break;
+                        case SDL_BUTTON_RIGHT: button = BUTTON_RIGHT; break;
+                        case SDL_BUTTON_MIDDLE: button = BUTTON_MIDDLE; break;
+                    }
+                    _APP.input.buttons_down[button] = false;
+                    _APP.input.buttons_released[button] = true;
+                }
+                break;
+            case SDL_EVENT_KEY_DOWN:
+                {
+                    Key key = _APP.input.keymap[e.key.scancode];
+                    _APP.input.keys_down[key] = true;
+                    _APP.input.keys_pressed[key] = true;
+                }
+                break;
+            case SDL_EVENT_MOUSE_MOTION:
+                {
+                    _APP.input.mouse.x = (f32)e.motion.x;
+                    _APP.input.mouse.y = (f32)e.motion.y;
+                }
+                break;
+            case SDL_EVENT_MOUSE_WHEEL:
+                {
+                    _APP.input.wheel.x = (f32)e.wheel.x;
+                    _APP.input.wheel.y = (f32)e.wheel.y;
+                }
+                break;
+            case SDL_EVENT_KEY_UP:
+                {
+                    Key key = _APP.input.keymap[e.key.scancode];
+                    _APP.input.keys_down[key] = false;
+                    _APP.input.keys_released[key] = true;
+                }
+                break;
+            case SDL_EVENT_TEXT_INPUT:
+                {
+                    int i = 0;
+                    while (e.text.text[i] && i < TEXT_BUF_LEN) {
+                        _APP.input.textbuf[i] = e.text.text[i];
+                        i++;
+                    }
+                }
+                break;
+        }
+    }
+
+}
+
 bool app_should_quit() {
     sdl_flush();
     sdl_end_frame();
 
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_EVENT_QUIT:
-                _APP.should_quit = true;
-                break;
-        }
-    }
+    sdl_process_events();
 
     sdl_begin_frame();
     return _APP.should_quit;
@@ -583,4 +806,36 @@ void draw_text(Font *font, const char *text, float x, float y) {
         }
         text++;
     }
+}
+
+bool is_mouse_down(Button button) {
+    return _APP.input.buttons_down[button];
+}
+
+bool is_mouse_pressed(Button button) {
+    return _APP.input.buttons_pressed[button];
+}
+
+bool is_mouse_released(Button button) {
+    return _APP.input.buttons_released[button];
+}
+
+bool is_key_pressed(Key key) {
+    return _APP.input.keys_pressed[key];
+}
+
+bool is_key_down(Key key) {
+    return _APP.input.keys_down[key];
+}
+
+bool is_key_released(Key key) {
+    return _APP.input.keys_released[key];
+}
+
+char get_char() {
+    char c = _APP.input.textbuf[_APP.input.textbuf_pos];
+    if (_APP.input.textbuf_pos < TEXT_BUF_LEN - 1) {
+        _APP.input.textbuf_pos++;
+    }
+    return c;
 }
