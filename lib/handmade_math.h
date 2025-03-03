@@ -327,14 +327,14 @@ typedef union Vec4
     {
         union
         {
-            Vec3 RGB;
+            Vec3 rgb;
             struct
             {
                 float r, g, b;
             };
         };
 
-        float A;
+        float a;
     };
 
     struct
@@ -549,10 +549,10 @@ static inline float invsqrt(float Float)
  */
 
 COVERAGE(lerp, 1)
-static inline float lerp(float A, float Time, float b)
+static inline float lerp(float a, float Time, float b)
 {
     ASSERT_COVERED(lerp);
-    return (1.0f - Time) * A + Time * b;
+    return (1.0f - Time) * a + Time * b;
 }
 
 COVERAGE(clamp, 1)
@@ -1014,66 +1014,66 @@ static inline Vec3 cross(Vec3 left, Vec3 right)
  */
 
 COVERAGE(len_sqrv2, 1)
-static inline float len_sqrv2(Vec2 A)
+static inline float len_sqrv2(Vec2 a)
 {
     ASSERT_COVERED(len_sqrv2);
-    return dot_v2(A, A);
+    return dot_v2(a, a);
 }
 
 COVERAGE(len_sqrv3, 1)
-static inline float len_sqrv3(Vec3 A)
+static inline float len_sqrv3(Vec3 a)
 {
     ASSERT_COVERED(len_sqrv3);
-    return dot_v3(A, A);
+    return dot_v3(a, a);
 }
 
 COVERAGE(len_sqrv4, 1)
-static inline float len_sqrv4(Vec4 A)
+static inline float len_sqrv4(Vec4 a)
 {
     ASSERT_COVERED(len_sqrv4);
-    return dot_v4(A, A);
+    return dot_v4(a, a);
 }
 
 COVERAGE(len_v2, 1)
-static inline float len_v2(Vec2 A)
+static inline float len_v2(Vec2 a)
 {
     ASSERT_COVERED(len_v2);
-    return m_sqrt(len_sqrv2(A));
+    return m_sqrt(len_sqrv2(a));
 }
 
 COVERAGE(len_v3, 1)
-static inline float len_v3(Vec3 A)
+static inline float len_v3(Vec3 a)
 {
     ASSERT_COVERED(len_v3);
-    return m_sqrt(len_sqrv3(A));
+    return m_sqrt(len_sqrv3(a));
 }
 
 COVERAGE(len_v4, 1)
-static inline float len_v4(Vec4 A)
+static inline float len_v4(Vec4 a)
 {
     ASSERT_COVERED(len_v4);
-    return m_sqrt(len_sqrv4(A));
+    return m_sqrt(len_sqrv4(a));
 }
 
 COVERAGE(norm_v2, 1)
-static inline Vec2 norm_v2(Vec2 A)
+static inline Vec2 norm_v2(Vec2 a)
 {
     ASSERT_COVERED(norm_v2);
-    return mul_v2f(A, invsqrt(dot_v2(A, A)));
+    return mul_v2f(a, invsqrt(dot_v2(a, a)));
 }
 
 COVERAGE(norm_v3, 1)
-static inline Vec3 norm_v3(Vec3 A)
+static inline Vec3 norm_v3(Vec3 a)
 {
     ASSERT_COVERED(norm_v3);
-    return mul_v3f(A, invsqrt(dot_v3(A, A)));
+    return mul_v3f(a, invsqrt(dot_v3(a, a)));
 }
 
 COVERAGE(norm_v4, 1)
-static inline Vec4 norm_v4(Vec4 A)
+static inline Vec4 norm_v4(Vec4 a)
 {
     ASSERT_COVERED(norm_v4);
-    return mul_v4f(A, invsqrt(dot_v4(A, A)));
+    return mul_v4f(a, invsqrt(dot_v4(a, a)));
 }
 
 /*
@@ -1081,24 +1081,24 @@ static inline Vec4 norm_v4(Vec4 A)
  */
 
 COVERAGE(lerp_v2, 1)
-static inline Vec2 lerp_v2(Vec2 A, float Time, Vec2 b)
+static inline Vec2 lerp_v2(Vec2 a, float Time, Vec2 b)
 {
     ASSERT_COVERED(lerp_v2);
-    return add_v2(mul_v2f(A, 1.0f - Time), mul_v2f(b, Time));
+    return add_v2(mul_v2f(a, 1.0f - Time), mul_v2f(b, Time));
 }
 
 COVERAGE(lerp_v3, 1)
-static inline Vec3 lerp_v3(Vec3 A, float Time, Vec3 b)
+static inline Vec3 lerp_v3(Vec3 a, float Time, Vec3 b)
 {
     ASSERT_COVERED(lerp_v3);
-    return add_v3(mul_v3f(A, 1.0f - Time), mul_v3f(b, Time));
+    return add_v3(mul_v3f(a, 1.0f - Time), mul_v3f(b, Time));
 }
 
 COVERAGE(lerp_v4, 1)
-static inline Vec4 lerp_v4(Vec4 A, float Time, Vec4 b)
+static inline Vec4 lerp_v4(Vec4 a, float Time, Vec4 b)
 {
     ASSERT_COVERED(lerp_v4);
-    return add_v4(mul_v4f(A, 1.0f - Time), mul_v4f(b, Time));
+    return add_v4(mul_v4f(a, 1.0f - Time), mul_v4f(b, Time));
 }
 
 /*
@@ -2663,73 +2663,73 @@ static inline Vec3 RotateV3AxisAngle_RH(Vec3 v, Vec3 Axis, float Angle) {
 #ifdef __cplusplus
 
 COVERAGE(len_v2cpp, 1)
-static inline float len(Vec2 A)
+static inline float len(Vec2 a)
 {
     ASSERT_COVERED(len_v2cpp);
-    return len_v2(A);
+    return len_v2(a);
 }
 
 COVERAGE(len_v3cpp, 1)
-static inline float len(Vec3 A)
+static inline float len(Vec3 a)
 {
     ASSERT_COVERED(len_v3cpp);
-    return len_v3(A);
+    return len_v3(a);
 }
 
 COVERAGE(len_v4cpp, 1)
-static inline float len(Vec4 A)
+static inline float len(Vec4 a)
 {
     ASSERT_COVERED(len_v4cpp);
-    return len_v4(A);
+    return len_v4(a);
 }
 
 COVERAGE(len_sqrv2cpp, 1)
-static inline float len_sqr(Vec2 A)
+static inline float len_sqr(Vec2 a)
 {
     ASSERT_COVERED(len_sqrv2cpp);
-    return len_sqrv2(A);
+    return len_sqrv2(a);
 }
 
 COVERAGE(len_sqrv3cpp, 1)
-static inline float len_sqr(Vec3 A)
+static inline float len_sqr(Vec3 a)
 {
     ASSERT_COVERED(len_sqrv3cpp);
-    return len_sqrv3(A);
+    return len_sqrv3(a);
 }
 
 COVERAGE(len_sqrv4cpp, 1)
-static inline float len_sqr(Vec4 A)
+static inline float len_sqr(Vec4 a)
 {
     ASSERT_COVERED(len_sqrv4cpp);
-    return len_sqrv4(A);
+    return len_sqrv4(a);
 }
 
 COVERAGE(norm_v2cpp, 1)
-static inline Vec2 norm(Vec2 A)
+static inline Vec2 norm(Vec2 a)
 {
     ASSERT_COVERED(norm_v2cpp);
-    return norm_v2(A);
+    return norm_v2(a);
 }
 
 COVERAGE(norm_v3cpp, 1)
-static inline Vec3 norm(Vec3 A)
+static inline Vec3 norm(Vec3 a)
 {
     ASSERT_COVERED(norm_v3cpp);
-    return norm_v3(A);
+    return norm_v3(a);
 }
 
 COVERAGE(norm_v4cpp, 1)
-static inline Vec4 norm(Vec4 A)
+static inline Vec4 norm(Vec4 a)
 {
     ASSERT_COVERED(norm_v4cpp);
-    return norm_v4(A);
+    return norm_v4(a);
 }
 
 COVERAGE(norm_qcpp, 1)
-static inline Quat norm(Quat A)
+static inline Quat norm(Quat a)
 {
     ASSERT_COVERED(norm_qcpp);
-    return norm_q(A);
+    return norm_q(a);
 }
 
 COVERAGE(dot_v2cpp, 1)
@@ -3806,7 +3806,7 @@ static inline Vec4 operator-(Vec4 In)
 
 void __hmm_invalid_generic();
 
-#define add(A, b) _Generic((A), \
+#define add(a, b) _Generic((a), \
     Vec2: add_v2, \
     Vec3: add_v3, \
     Vec4: add_v4, \
@@ -3814,9 +3814,9 @@ void __hmm_invalid_generic();
     Mat3: add_m3, \
     Mat4: add_m4, \
     Quat: add_q   \
-)(A, b)
+)(a, b)
 
-#define sub(A, b) _Generic((A), \
+#define sub(a, b) _Generic((a), \
     Vec2: sub_v2, \
     Vec3: sub_v3, \
     Vec4: sub_v4, \
@@ -3824,10 +3824,10 @@ void __hmm_invalid_generic();
     Mat3: sub_m3, \
     Mat4: sub_m4, \
     Quat: sub_q   \
-)(A, b)
+)(a, b)
 
-#define mul(A, b) _Generic((b), \
-    float: _Generic((A), \
+#define mul(a, b) _Generic((b), \
+    float: _Generic((a), \
         Vec2: mul_v2f, \
         Vec3: mul_v3f, \
         Vec4: mul_v4f, \
@@ -3837,17 +3837,17 @@ void __hmm_invalid_generic();
         Quat: mul_qf,  \
         default: __hmm_invalid_generic \
     ), \
-    Vec2: _Generic((A), \
+    Vec2: _Generic((a), \
         Vec2: mul_v2,   \
         Mat2: mul_m2v2, \
         default: __hmm_invalid_generic \
     ), \
-    Vec3: _Generic((A), \
+    Vec3: _Generic((a), \
         Vec3: mul_v3,   \
         Mat3: mul_m3v3, \
         default: __hmm_invalid_generic \
     ), \
-    Vec4: _Generic((A), \
+    Vec4: _Generic((a), \
         Vec4: mul_v4,   \
         Mat4: mul_m4v4, \
         default: __hmm_invalid_generic \
@@ -3856,10 +3856,10 @@ void __hmm_invalid_generic();
     Mat3: mul_m3, \
     Mat4: mul_m4, \
     Quat: mul_q   \
-)(A, b)
+)(a, b)
 
-#define div(A, b) _Generic((b), \
-    float: _Generic((A), \
+#define div(a, b) _Generic((b), \
+    float: _Generic((a), \
         Vec2: div_v2f, \
         Vec3: div_v3f, \
         Vec4: div_v4f, \
@@ -3871,46 +3871,46 @@ void __hmm_invalid_generic();
     Vec2: div_v2, \
     Vec3: div_v3, \
     Vec4: div_v4  \
-)(A, b)
+)(a, b)
 
-#define len(A) _Generic((A), \
+#define len(a) _Generic((a), \
     Vec2: len_v2, \
     Vec3: len_v3, \
     Vec4: len_v4  \
-)(A)
+)(a)
 
-#define len_sqr(A) _Generic((A), \
+#define len_sqr(a) _Generic((a), \
     Vec2: len_sqrv2, \
     Vec3: len_sqrv3, \
     Vec4: len_sqrv4  \
-)(A)
+)(a)
 
-#define norm(A) _Generic((A), \
+#define norm(a) _Generic((a), \
     Vec2: norm_v2, \
     Vec3: norm_v3, \
     Vec4: norm_v4, \
     Quat: norm_q   \
-)(A)
+)(a)
 
-#define dot(A, b) _Generic((A), \
+#define dot(a, b) _Generic((a), \
     Vec2: dot_v2, \
     Vec3: dot_v3, \
     Vec4: dot_v4, \
     Quat: dot_q   \
-)(A, b)
+)(a, b)
 
-#define lerp(A, T, b) _Generic((A), \
+#define lerp(a, T, b) _Generic((a), \
     float: lerp, \
     Vec2: lerp_v2, \
     Vec3: lerp_v3, \
     Vec4: lerp_v4  \
-)(A, T, b)
+)(a, T, b)
 
-#define eq(A, b) _Generic((A), \
+#define eq(a, b) _Generic((a), \
     Vec2: eq_v2, \
     Vec3: eq_v3, \
     Vec4: eq_v4  \
-)(A, b)
+)(a, b)
 
 #define transpose(M) _Generic((M), \
     Mat2: transpose_m2, \

@@ -721,7 +721,7 @@ void app_clear(Color color) {
                 .cycle = false,
                 .load_op = SDL_GPU_LOADOP_CLEAR,
                 .store_op = SDL_GPU_STOREOP_STORE,
-                .clear_color = (SDL_FColor){0.0f, 0.5f, 0.0f, 1.0f},
+                .clear_color = (SDL_FColor){color.r, color.g, color.b, color.a},
             },
             1,
             NULL
