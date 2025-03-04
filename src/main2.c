@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     Sound sound = load_sound("res/tweet.ogg");
     Sound music = load_sound("res/song.ogg");
 
-    Font font = load_font("res/fonts/vera/Vera.ttf");
+    Font font = load_font("res/fonts/vera/Vera.ttf", 100);
     Texture texture = load_texture("res/bird.png");
 
     play_sound(&sound);
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 
 
 
-        draw_text(&font, "Hello", 0, 0);
+        draw_text(&font, "Hello", 0, 0, (Color){0.0f, 0.5f, 0.0f, 1.0f});
 
         if (is_key_pressed(KEY_A)) {
             printf("a");

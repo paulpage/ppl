@@ -33,7 +33,6 @@
 /*     int w, h, d; */
 /* }; */
 
-#define FONT_SIZE 24.0f
 #define ATLAS_WIDTH 512
 #define ATLAS_HEIGHT 512
 
@@ -110,18 +109,6 @@ struct {
         int textbuf_pos;
     } input;
 } _APP = {0};
-
-void push_quad(GpuQuad input) {
-    VertStore *store = &_APP.vertex_data_store;
-    if (store->size == store->capacity) {
-        printf("push capacity %d -> %d\n", store->capacity, store->capacity * 2);
-        store->capacity *= 2;
-        store->data = realloc(store->data, store->capacity * sizeof(GpuQuad));
-    }
-
-    store->data[store->size] = input;
-    store->size++;
-}
 
 Texture load_texture_bytes(u8 *data, int w, int h, int d) {
 
@@ -216,21 +203,21 @@ Texture load_texture(char *filename) {
     return texture;
 }
 
-Font load_font(const char* font_path) {
+Font load_font(const char* filename, float size) {
 
     Font font = {0};
     font.char_data = malloc(96 * sizeof(stbtt_packedchar));
-    font.scale = FONT_SIZE;
-    size_t font_size = 0;
-    u8 *font_buffer = os_read_file(font_path, &font_size);
-    printf("font file size: %zd\n", font_size);
+    font.scale = size;
+    size_t file_len = 0;
+    u8 *font_buffer = os_read_file(filename, &file_len);
+    printf("font file size: %zd\n", file_len);
 
     u8 *atlas_data = malloc(ATLAS_WIDTH * ATLAS_HEIGHT);
 
     stbtt_pack_context pack_context = {0};
 
     stbtt_pack_range pack_range = {0};
-    pack_range.font_size = FONT_SIZE;
+    pack_range.font_size = size;
     pack_range.first_unicode_codepoint_in_range = 32;
     pack_range.num_chars = 96;
     pack_range.chardata_for_range = font.char_data;
@@ -242,9 +229,9 @@ Font load_font(const char* font_path) {
 
     u8 *pixels = malloc(ATLAS_WIDTH * ATLAS_HEIGHT * 4);
     for (int i = 0; i < ATLAS_WIDTH * ATLAS_HEIGHT; i++) {
-        pixels[i*4] = 0;
-        pixels[i*4 + 1] = 0;
-        pixels[i*4 + 2] = 0;
+        pixels[i*4] = 255;
+        pixels[i*4 + 1] = 255;
+        pixels[i*4 + 2] = 255;
         pixels[i * 4 + 3] = atlas_data[i];
     }
     font.texture = load_texture_bytes(pixels, ATLAS_WIDTH, ATLAS_HEIGHT, 4);
@@ -731,23 +718,44 @@ void app_clear(Color color) {
     }
 }
 
-void check_flush_quad() {
+void push_quad(GpuQuad quad) {
     if (_APP.last_texture.idx != _APP.rect_texture.idx || 1) {
         sdl_flush();
         _APP.last_texture = _APP.rect_texture;
     }
+
+    VertStore *store = &_APP.vertex_data_store;
+
+    if (store->size == store->capacity) {
+        printf("push capacity %d -> %d\n", store->capacity, store->capacity * 2);
+        store->capacity *= 2;
+        store->data = realloc(store->data, store->capacity * sizeof(GpuQuad));
+    }
+
+    store->data[store->size] = quad;
+    store->size++;
 }
 
-void check_flush_texture(Texture *texture) {
+void push_textured_quad(Texture *texture, GpuQuad quad) {
     if (_APP.last_texture.idx != texture->idx) {
         sdl_flush();
         _APP.last_texture = *texture;
     }
+
+    VertStore *store = &_APP.vertex_data_store;
+
+    if (store->size == store->capacity) {
+        printf("push capacity %d -> %d\n", store->capacity, store->capacity * 2);
+        store->capacity *= 2;
+        store->data = realloc(store->data, store->capacity * sizeof(GpuQuad));
+    }
+
+    store->data[store->size] = quad;
+    store->size++;
 }
 
-void draw_rect(Rect rect, Color color) {
-    check_flush_quad();
 
+void draw_rect(Rect rect, Color color) {
     GpuQuad quad = {
         .dst_rect = rect,
         .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
@@ -762,8 +770,6 @@ void draw_rect(Rect rect, Color color) {
 }
 
 void draw_border_rect(Rect rect, f32 border, Color color, Color border_color) {
-    check_flush_quad();
-
     GpuQuad quad = {
         .dst_rect = rect,
         .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
@@ -778,8 +784,6 @@ void draw_border_rect(Rect rect, f32 border, Color color, Color border_color) {
 }
 
 void draw_rounded_rect(Rect rect, f32 radius, Color color) {
-    check_flush_quad();
-
     GpuQuad quad = {
         .dst_rect = rect,
         .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
@@ -794,8 +798,6 @@ void draw_rounded_rect(Rect rect, f32 radius, Color color) {
 }
 
 void draw_rounded_border_rect(Rect rect, f32 radius, f32 border, Color color, Color border_color) {
-    check_flush_quad();
-
     GpuQuad quad = {
         .dst_rect = rect,
         .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
@@ -810,8 +812,6 @@ void draw_rounded_border_rect(Rect rect, f32 radius, f32 border, Color color, Co
 }
 
 void draw_texture(Texture *texture, Rect src, Rect dst) {
-    check_flush_texture(texture);
-
     Color color = {1.0f, 1.0f, 1.0f, 1.0f};
     src.w = src.w / texture->w;
     src.h = src.h / texture->h;
@@ -825,13 +825,12 @@ void draw_texture(Texture *texture, Rect src, Rect dst) {
         .border_thickness = 0.0f,
         .use_texture = 1.0f,
     };
-    push_quad(quad);
+    push_textured_quad(texture, quad);
 }
 
-void draw_text(Font *font, const char *text, float x, float y) {
-    check_flush_texture(&(font->texture));
-
+void draw_text(Font *font, const char *text, float x, float y, Color color) {
     /* u8 r, g, b, a; */
+
     y += font->scale;
     while (*text) {
         if (*text >= 32 && *text < 128) {
@@ -843,17 +842,12 @@ void draw_text(Font *font, const char *text, float x, float y) {
                 .src_rect = (Rect){quad.s0, quad.t0, (quad.s1 - quad.s0), (quad.t1 - quad.t0)},
                 .corner_radii = {0.0f, 0.0f, 0.0f, 0.0f},
                 .border_color = {1.0f, 1.0f, 1.0f, 1.0f},
-                .colors = {
-                    (Vec4){1.0f, 1.0f, 1.0f, 1.0f},
-                    (Vec4){1.0f, 1.0f, 1.0f, 1.0f},
-                    (Vec4){1.0f, 1.0f, 1.0f, 1.0f},
-                    (Vec4){1.0f, 1.0f, 1.0f, 1.0f},
-                },
+                .colors = {color, color, color, color},
                 .edge_softness = 1.0f,
                 .border_thickness = 1.0f,
                 .use_texture = 1.0f,
             };
-            push_quad(gpu_quad);
+            push_textured_quad(&(font->texture), gpu_quad);
         }
         text++;
     }

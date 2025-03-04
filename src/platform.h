@@ -171,9 +171,13 @@ void app_quit();
 
 void app_clear(Color color);
 
+Texture load_texture(char *filename);
+Font load_font(const char* filename, float size);
+
+
 void draw_rect(Rect rect, Color color);
 void draw_texture(Texture *texture, Rect src, Rect dst);
-void draw_text(Font *font, const char *text, float x, float y);
+void draw_text(Font *font, const char *text, float x, float y, Color color);
 
 Sound load_sound(char *filename);
 void play_sound(Sound *sound);
