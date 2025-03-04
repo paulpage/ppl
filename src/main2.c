@@ -33,6 +33,29 @@ int main(int argc, char **argv) {
             (Color){1.0f, 1.0f, 0.0f, 1.0f}
         );
 
+        draw_border_rect(
+            (Rect){200.0f, 200.0f, 40.0f, 60.0f},
+            5.0f,
+            (Color){1.0f, 0.0f, 1.0f, 1.0f},
+            (Color){1.0f, 1.0f, 0.0f, 1.0f}
+        );
+
+        draw_rounded_rect(
+            (Rect){300.0f, 200.0f, 40.0f, 60.0f},
+            10.0f,
+            (Color){1.0f, 0.0f, 1.0f, 1.0f}
+        );
+
+        draw_rounded_border_rect(
+            (Rect){400.0f, 200.0f, 40.0f, 60.0f},
+            10.0f,
+            5.0f,
+            (Color){1.0f, 0.0f, 1.0f, 1.0f},
+            (Color){1.0f, 1.0f, 0.0f, 1.0f}
+        );
+
+
+
         draw_text(&font, "Hello", 0, 0);
 
         if (is_key_pressed(KEY_A)) {

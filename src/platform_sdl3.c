@@ -37,7 +37,7 @@
 #define ATLAS_WIDTH 512
 #define ATLAS_HEIGHT 512
 
-typedef struct VertInput {
+typedef struct GpuQuad {
     Rect dst_rect;
     Rect src_rect;
     Color border_color;
@@ -47,32 +47,21 @@ typedef struct VertInput {
     float border_thickness;
     float use_texture;
     float _padding[1]; // std140 alignment
-} VertInput;
+} GpuQuad;
 
 typedef struct VertStore {
-    VertInput *data;
+    GpuQuad *data;
     int size;
     int capacity;
 } VertStore;
 
 VertStore make_vert_store() {
-    VertInput *data = malloc(1024 * sizeof(VertInput));
+    GpuQuad *data = malloc(1024 * sizeof(GpuQuad));
     return (VertStore){
         .data = data,
         .size = 0,
         .capacity = 1024,
     };
-}
-
-void push_vert(VertStore *store, VertInput input) {
-    if (store->size == store->capacity) {
-        printf("push capacity %d -> %d\n", store->capacity, store->capacity * 2);
-        store->capacity *= 2;
-        store->data = realloc(store->data, store->capacity * sizeof(VertInput));
-    }
-
-    store->data[store->size] = input;
-    store->size++;
 }
 
 void vert_clear(VertStore *store) {
@@ -122,6 +111,17 @@ struct {
     } input;
 } _APP = {0};
 
+void push_quad(GpuQuad input) {
+    VertStore *store = &_APP.vertex_data_store;
+    if (store->size == store->capacity) {
+        printf("push capacity %d -> %d\n", store->capacity, store->capacity * 2);
+        store->capacity *= 2;
+        store->data = realloc(store->data, store->capacity * sizeof(GpuQuad));
+    }
+
+    store->data[store->size] = input;
+    store->size++;
+}
 
 Texture load_texture_bytes(u8 *data, int w, int h, int d) {
 
@@ -489,7 +489,7 @@ void app_init() {
         _APP.gpu,
         &(SDL_GPUTransferBufferCreateInfo){
             .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-            .size = _APP.vertex_data_store.capacity * sizeof(VertInput),
+            .size = _APP.vertex_data_store.capacity * sizeof(GpuQuad),
         }
     );
 
@@ -497,7 +497,7 @@ void app_init() {
         _APP.gpu,
         &(SDL_GPUBufferCreateInfo){
             .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-            .size = _APP.vertex_data_store.capacity * sizeof(VertInput),
+            .size = _APP.vertex_data_store.capacity * sizeof(GpuQuad),
         }
     );
 
@@ -535,7 +535,7 @@ void sdl_flush() {
             _APP.gpu,
             &(SDL_GPUTransferBufferCreateInfo){
                 .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-                .size = _APP.vertex_data_store.capacity * sizeof(VertInput),
+                .size = _APP.vertex_data_store.capacity * sizeof(GpuQuad),
             }
         );
         SDL_ReleaseGPUBuffer(_APP.gpu, _APP.vertex_data_buffer);
@@ -543,7 +543,7 @@ void sdl_flush() {
             _APP.gpu,
             &(SDL_GPUBufferCreateInfo){
                 .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                .size = _APP.vertex_data_store.capacity * sizeof(VertInput),
+                .size = _APP.vertex_data_store.capacity * sizeof(GpuQuad),
             }
         );
         _APP.buf_capacity = _APP.vertex_data_store.capacity;
@@ -553,7 +553,7 @@ void sdl_flush() {
 
         if (_APP.vertex_data_store.size > 0) {
 
-            VertInput *data_ptr = SDL_MapGPUTransferBuffer(_APP.gpu, _APP.vertex_data_transfer_buffer, true);
+            GpuQuad *data_ptr = SDL_MapGPUTransferBuffer(_APP.gpu, _APP.vertex_data_transfer_buffer, true);
 
             for (int i = 0; i < _APP.vertex_data_store.size; i++) {
                 data_ptr[i] = _APP.vertex_data_store.data[i];
@@ -571,7 +571,7 @@ void sdl_flush() {
                     &(SDL_GPUBufferRegion) {
                     .buffer = _APP.vertex_data_buffer,
                     .offset = 0,
-                    .size = _APP.vertex_data_store.size * sizeof(VertInput),
+                    .size = _APP.vertex_data_store.size * sizeof(GpuQuad),
                     },
                     true
                     );
@@ -731,13 +731,24 @@ void app_clear(Color color) {
     }
 }
 
-void draw_rect(Rect rect, Color color) {
+void check_flush_quad() {
     if (_APP.last_texture.idx != _APP.rect_texture.idx || 1) {
         sdl_flush();
         _APP.last_texture = _APP.rect_texture;
     }
+}
 
-    VertInput vert = {
+void check_flush_texture(Texture *texture) {
+    if (_APP.last_texture.idx != texture->idx) {
+        sdl_flush();
+        _APP.last_texture = *texture;
+    }
+}
+
+void draw_rect(Rect rect, Color color) {
+    check_flush_quad();
+
+    GpuQuad quad = {
         .dst_rect = rect,
         .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
         .corner_radii = {0.0f, 0.0f, 0.0f, 0.0f},
@@ -747,20 +758,64 @@ void draw_rect(Rect rect, Color color) {
         .border_thickness = 0.0f,
         .use_texture = 0.0f,
     };
+    push_quad(quad);
+}
 
-    push_vert(&_APP.vertex_data_store, vert);
+void draw_border_rect(Rect rect, f32 border, Color color, Color border_color) {
+    check_flush_quad();
+
+    GpuQuad quad = {
+        .dst_rect = rect,
+        .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
+        .corner_radii = {0.0f, 0.0f, 0.0f, 0.0f},
+        .border_color = border_color,
+        .colors = {color, color, color, color},
+        .edge_softness = 0.0f,
+        .border_thickness = border,
+        .use_texture = 0.0f,
+    };
+    push_quad(quad);
+}
+
+void draw_rounded_rect(Rect rect, f32 radius, Color color) {
+    check_flush_quad();
+
+    GpuQuad quad = {
+        .dst_rect = rect,
+        .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
+        .corner_radii = {radius, radius, radius, radius},
+        .border_color = color,
+        .colors = {color, color, color, color},
+        .edge_softness = 0.0f,
+        .border_thickness = 0.0f,
+        .use_texture = 0.0f,
+    };
+    push_quad(quad);
+}
+
+void draw_rounded_border_rect(Rect rect, f32 radius, f32 border, Color color, Color border_color) {
+    check_flush_quad();
+
+    GpuQuad quad = {
+        .dst_rect = rect,
+        .src_rect = (Rect){0.0f, 0.0f, 1.0f, 1.0f},
+        .corner_radii = {radius, radius, radius, radius},
+        .border_color = border_color,
+        .colors = {color, color, color, color},
+        .edge_softness = 0.0f,
+        .border_thickness = border,
+        .use_texture = 0.0f,
+    };
+    push_quad(quad);
 }
 
 void draw_texture(Texture *texture, Rect src, Rect dst) {
-    if (_APP.last_texture.idx != texture->idx || 1) {
-        sdl_flush();
-        _APP.last_texture = *texture;
-    }
+    check_flush_texture(texture);
 
     Color color = {1.0f, 1.0f, 1.0f, 1.0f};
     src.w = src.w / texture->w;
     src.h = src.h / texture->h;
-    VertInput vert = {
+    GpuQuad quad = {
         .dst_rect = dst,
         .src_rect = src,
         .corner_radii = {0.0f, 0.0f, 0.0f, 0.0f},
@@ -770,15 +825,11 @@ void draw_texture(Texture *texture, Rect src, Rect dst) {
         .border_thickness = 0.0f,
         .use_texture = 1.0f,
     };
-
-    push_vert(&_APP.vertex_data_store, vert);
+    push_quad(quad);
 }
 
 void draw_text(Font *font, const char *text, float x, float y) {
-    if (_APP.last_texture.idx != font->texture.idx || 1) {
-        sdl_flush();
-        _APP.last_texture = font->texture;
-    }
+    check_flush_texture(&(font->texture));
 
     /* u8 r, g, b, a; */
     y += font->scale;
@@ -787,7 +838,7 @@ void draw_text(Font *font, const char *text, float x, float y) {
             stbtt_aligned_quad quad;
             stbtt_GetPackedQuad(font->char_data, ATLAS_WIDTH, ATLAS_HEIGHT, *text - 32, &x, &y, &quad, 1);
 
-            VertInput vert = {
+            GpuQuad gpu_quad = {
                 .dst_rect = (Rect){quad.x0, quad.y0, quad.x1 - quad.x0, quad.y1 - quad.y0},
                 .src_rect = (Rect){quad.s0, quad.t0, (quad.s1 - quad.s0), (quad.t1 - quad.t0)},
                 .corner_radii = {0.0f, 0.0f, 0.0f, 0.0f},
@@ -802,7 +853,7 @@ void draw_text(Font *font, const char *text, float x, float y) {
                 .border_thickness = 1.0f,
                 .use_texture = 1.0f,
             };
-            push_vert(&_APP.vertex_data_store, vert);
+            push_quad(gpu_quad);
         }
         text++;
     }
